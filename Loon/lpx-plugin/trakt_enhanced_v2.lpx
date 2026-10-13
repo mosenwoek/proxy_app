@@ -4,7 +4,7 @@
 #!homepage = https://github.com/mosenwoek
 #!openUrl = https://t.me/m8p8m
 #!author = DemoJameson[https://github.com/DemoJameson] mosenwoek[https://github.com/mosenwoek] TG[https://t.me/m8p8m]
-#!updatedTime=2026-10-13 (修复版)
+#!updatedTime=2026-10-13 16:00:00
 
 [Argument]
 fakeVipEnabled = switch, "true", tag=伪装成 VIP, desc=启用后伪装为 Trakt VIP 会员，移除 App 中的广告
