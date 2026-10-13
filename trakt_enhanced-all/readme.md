@@ -62,8 +62,8 @@
 
 **原作者**: DemoJameson  
 **原项目**: https://github.com/DemoJameson/Proxy.Modules  
-**修复者**: mosenwoek (GitHub: @mosenwoek | Telegram: @m8p8m)  
-**修复日期**: 2024-10-13  
+**修复者**: mosenwoek (GitHub: [@mosenwoek](https://github.com/mosenwoek) | Telegram:[ @m8p8m](https://t.me/tgxiaoxizf_bot))  
+**修复日期**: 2026-10-13  
 
 ---
 
