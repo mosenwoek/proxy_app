@@ -1,10 +1,9 @@
 #!name=Trakt 增强 (观看记录上报修复版)
 #!desc=Trakt App 各页面从英文改为简体中文或港台繁体，包括海报；历史页面剧集类别的已观看记录按电视剧合并；Trakt 的影片详情页添加 Forward、Infuse、Rex 跳转按钮；部分兼容其它使用了 Trakt API 的应用。【修复版说明】解决开启「篡改应用授权」后观看记录无法上报的问题。
 #!icon=https://raw.githubusercontent.com/DemoJameson/Proxy.Modules/main/trakt_simplified_chinese/images/trakt.webp
-#!homepage = https://github.com/mosenwoek
-#!openUrl = https://t.me/m8p8m
-#!author = DemoJameson[https://github.com/DemoJameson] mosenwoek[https://github.com/mosenwoek] TG[https://t.me/m8p8m]
-#!updatedTime=2026-10-13 16:00:00
+#!homepage=https://github.com/mosenwoek
+#!author = @DemoJameson[https://github.com/DemoJameson], @mosenwoek[https://github.com/mosenwoek], @TG[https://t.me/m8p8m]
+#!date = 2026-10-14
 
 [Argument]
 fakeVipEnabled = switch, "true", tag=伪装成 VIP, desc=启用后伪装为 Trakt VIP 会员，移除 App 中的广告
