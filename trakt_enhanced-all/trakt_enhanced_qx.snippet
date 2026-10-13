@@ -1,0 +1,90 @@
+# Trakt Enhanced - Quantumult X Configuration Snippet
+# Original Author: DemoJameson (https://github.com/DemoJameson/Proxy.Modules)
+# Modified by: mosenwoek (GitHub: @mosenwoek | Telegram: @m8p8m)
+# Description: Trakt App Chinese localization + history merge + bypass 10-app limit
+# Fix: Resolved scrobble/sync upload failure when "Tamper App Authorization" is enabled
+# Updated: 2024-10-13 (Fixed version)
+
+# ========== [rewrite_local] Section ==========
+# Copy the following lines to Quantumult X - Config - [rewrite_local] block
+
+# 篡改第三方 App 的 Trakt OAuth 设备码和 token 请求
+^https:\/\/apiz?\.trakt\.tv\/oauth\/(?:device\/code|device\/token|token)(?:\?.*)?$ url script-request-body https://raw.githubusercontent.com/DemoJameson/Proxy.Modules/main/trakt_simplified_chinese/trakt_simplified_chinese.js, tag=Trakt OAuth Client Rewrite
+# 篡改第三方 App 的 Trakt Auth token 请求
+^https:\/\/auth\.trakt\.tv\/oauth\/token(?:\?.*)?$ url script-request-body https://raw.githubusercontent.com/DemoJameson/Proxy.Modules/main/trakt_simplified_chinese/trakt_simplified_chinese.js, tag=Trakt Auth OAuth Client Rewrite
+# 篡改第三方 App 的 trakt.tv token 请求
+^https:\/\/trakt\.tv\/oauth\/token(?:\?.*)?$ url script-request-body https://raw.githubusercontent.com/DemoJameson/Proxy.Modules/main/trakt_simplified_chinese/trakt_simplified_chinese.js, tag=Trakt Web OAuth Client Rewrite
+# 替换第三方 App 的 trakt.tv 授权地址
+^https:\/\/trakt\.tv\/oauth\/authorize(?:\?.*)?$ url script-request-header https://raw.githubusercontent.com/DemoJameson/Proxy.Modules/main/trakt_simplified_chinese/trakt_simplified_chinese.js, tag=Trakt Web OAuth Authorize Rewrite
+# 替换第三方 App 的 auth.trakt.tv 授权地址
+^https:\/\/auth\.trakt\.tv\/oauth\/authorize(?:\?.*)?$ url script-request-header https://raw.githubusercontent.com/DemoJameson/Proxy.Modules/main/trakt_simplified_chinese/trakt_simplified_chinese.js, tag=Trakt Auth OAuth Authorize Rewrite
+# 将 Trakt 官方授权回调还原为第三方 App 回调
+^https:\/\/auth\.trakt\.tv\/api\/auth\/oauth2\/authorize(?:\?.*)?$ url script-response-header https://raw.githubusercontent.com/DemoJameson/Proxy.Modules/main/trakt_simplified_chinese/trakt_simplified_chinese.js, tag=Trakt OAuth Callback Rewrite
+# 将 trakt.tv 官方授权回调还原为第三方 App 回调
+^https:\/\/trakt\.tv\/api\/auth\/oauth2\/authorize(?:\?.*)?$ url script-response-header https://raw.githubusercontent.com/DemoJameson/Proxy.Modules/main/trakt_simplified_chinese/trakt_simplified_chinese.js, tag=Trakt Web OAuth Callback Rewrite
+# 记录篡改流程签发的 Trakt Auth access/refresh token
+^https:\/\/auth\.trakt\.tv\/oauth\/token(?:\?.*)?$ url script-response-body https://raw.githubusercontent.com/DemoJameson/Proxy.Modules/main/trakt_simplified_chinese/trakt_simplified_chinese.js, tag=Trakt Auth OAuth Token Response Rewrite
+# 记录篡改流程签发的 trakt.tv access/refresh token
+^https:\/\/trakt\.tv\/oauth\/token(?:\?.*)?$ url script-response-body https://raw.githubusercontent.com/DemoJameson/Proxy.Modules/main/trakt_simplified_chinese/trakt_simplified_chinese.js, tag=Trakt Web OAuth Token Response Rewrite
+# 处理播放器 DeepLink 跳转
+^https:\/\/loon-plugins\.demojameson\.de5\.net\/api\/redirect\?.*$ url script-request-header https://raw.githubusercontent.com/DemoJameson/Proxy.Modules/main/trakt_simplified_chinese/trakt_simplified_chinese.js, tag=Direct Redirect
+# SofaTime 中自定义播放器 Logo
+^https:\/\/image\.tmdb\.org\/t\/p\/w342\/[a-z0-9_-]+_logo\.webp(?:\?.*)?$ url script-request-header https://raw.githubusercontent.com/DemoJameson/Proxy.Modules/main/trakt_simplified_chinese/trakt_simplified_chinese.js, tag=TMDB Logo Redirect
+# 拦截 sync/history/episodes 请求，放大 limit
+^https:\/\/apiz?\.trakt\.tv\/sync\/history\/episodes\/?(\?.*)?$ url script-request-header https://raw.githubusercontent.com/DemoJameson/Proxy.Modules/main/trakt_simplified_chinese/trakt_simplified_chinese.js, tag=Trakt Sync History Episodes Request
+# 拦截 history/episodes 请求，放大 limit
+^https:\/\/apiz?\.trakt\.tv\/users\/[^\/]+?\/history\/episodes\/?(\?.*)?$ url script-request-header https://raw.githubusercontent.com/DemoJameson/Proxy.Modules/main/trakt_simplified_chinese/trakt_simplified_chinese.js, tag=Trakt History Episodes Request
+# 拦截带季号的请求，记录当前浏览季
+^https:\/\/apiz?\.trakt\.tv\/shows\/[^\/]+\/seasons\/\d+(?:\/.*|\?.*)?$ url script-request-header https://raw.githubusercontent.com/DemoJameson/Proxy.Modules/main/trakt_simplified_chinese/trakt_simplified_chinese.js, tag=Trakt Current Season Request
+# 按篡改流程签发的 access token 改写 trakt-api-key
+^https:\/\/apiz?\.trakt\.tv\/(?!oauth\/).*$ url script-request-header https://raw.githubusercontent.com/DemoJameson/Proxy.Modules/main/trakt_simplified_chinese/trakt_simplified_chinese.js, tag=Trakt API Key Rewrite
+# 统一拦截 Trakt 响应，由脚本内部分流处理
+^https:\/\/apiz?\.trakt\.tv\/.*$ url script-response-body https://raw.githubusercontent.com/DemoJameson/Proxy.Modules/main/trakt_simplified_chinese/trakt_simplified_chinese.js, tag=Trakt Response Router
+# 仅拦截 SofaTime 的 TMDB provider 列表，注入播放器
+^https:\/\/api\.themoviedb\.org\/3\/watch\/providers\/(?:movie|tv)(\?.*)?$ url script-response-body https://raw.githubusercontent.com/DemoJameson/Proxy.Modules/main/trakt_simplified_chinese/trakt_simplified_chinese.js, tag=TMDB Provider Catalog
+# 仅拦截 SofaTime 的 TMDB 详情请求（append_to_response 含 watch/providers），清除原有观看来源并注入排序 1 播放器
+^https:\/\/api\.themoviedb\.org\/3\/(?:tv|movie)\/\d+\?.*watch(?:%2F|\/)providers.*$ url script-response-body https://raw.githubusercontent.com/DemoJameson/Proxy.Modules/main/trakt_simplified_chinese/trakt_simplified_chinese.js, tag=TMDB Detail Watch Providers
+
+# ========== [mitm] Section ==========
+# Add these hostnames to [mitm] block (skip if already exists)
+
+hostname = apiz.trakt.tv, api.trakt.tv, auth.trakt.tv, trakt.tv, api.themoviedb.org, image.tmdb.org, loon-plugins.demojameson.de5.net
+
+# ========== Parameter Configuration ==========
+# Quantumult X does not support plugin parameter system.
+# All parameters use script built-in default values:
+#   - Fake VIP: enabled
+#   - Target language: Simplified Chinese
+#   - Poster language: Original language
+#   - Translation engine: Google Translate
+#   - Character translation: enabled
+#   - History merge: enabled
+#   - Jump buttons: Forward(1), Infuse(2), Rex(3)
+#   - Tamper app authorization: DISABLED (Important!)
+#
+# To enable "Tamper App Authorization" (bypass 10-app limit):
+#
+# Method 1: Use pre-configured script (Recommended)
+#   1. Download: trakt_simplified_chinese_fixed.js
+#   2. Add at line 1:
+#      var $argument = "true,Simplified Chinese,Original,Google,true,true,1,2,3,https://proxy-modules.demojameson.de5.net,true,Off";
+#   3. Replace all script URLs above with local file path
+#   4. The 11th parameter "true" is tamperAppAuthorizationEnabled
+#
+# Method 2: Modify source code
+#   1. Download: trakt_simplified_chinese.js
+#   2. Search: defaultValue:!1,type:"boolean",tag:"Tamper App Auth"
+#   3. Change defaultValue:!1 to defaultValue:!0
+#   4. Save and use local file path
+#
+# Parameter order (comma-separated string):
+# 1. fakeVipEnabled (true/false)
+# 2. chineseLocale (Simplified Chinese / Traditional Chinese Taiwan / HK)
+# 3. posterImageMode (Original / Simplified Chinese / Traditional / Default)
+# 4. translationEngine (Google / DeepLX / Off)
+# 5. characterTranslationEnabled (true/false)
+# 6. historyEpisodesMergedByShow (true/false)
+# 7-9. forwardButtonOrder, infuseButtonOrder, rexButtonOrder (0-3)
+# 10. backendBaseUrl (URL or empty)
+# 11. tamperAppAuthorizationEnabled (true/false) ** KEY PARAMETER **
+# 12. debugMode (Off / DisableLocal / DisableRemote / DisableAll)
