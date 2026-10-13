@@ -4,8 +4,8 @@
 
 | 文件 | 平台 | 大小 | 说明 |
 |------|------|------|------|
-| **trakt_enhanced_v2.plugin** | Loon 3.5.1+ | 13.9 KB | 新版 v2 语法（推荐） |
-| **trakt_enhanced_fixed.plugin** | Loon 旧版 | 13.3 KB | 旧版语法兼容 |
+| **trakt_enhanced_v2.lpx** | Loon 3.5.1+ | 13.9 KB | 新版 v2 语法（推荐） |
+| **trakt_enhanced_fixed.lpx** | Loon 旧版 | 13.3 KB | 旧版语法兼容 |
 | **trakt_enhanced_fixed.sgmodule** | Surge | 13.9 KB | Surge 模块 |
 | **trakt_enhanced_qx.snippet** | Quantumult X | 7.8 KB | QX 配置片段 |
 | **trakt_simplified_chinese_fixed.js** | 通用 | 300 KB | 脚本文件（可选） |
@@ -24,7 +24,7 @@
 
 ### Loon
 ```
-配置 → 插件 → + → 粘贴 trakt_enhanced_v2.plugin 全部内容
+配置 → 插件 → + → 粘贴 trakt_enhanced_v2.lpx 全部内容
 开启「篡改应用授权」→ 在应用中重新授权 Trakt
 ```
 
