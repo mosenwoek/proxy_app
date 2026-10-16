@@ -28,6 +28,6 @@
         "val": false
       }
     ],
-    "script": "https://raw.githubusercontent.com/mosenwoek/proxy_app/refs/heads/main/Surge/sgmodule/hcnsec_cron.sgmodule"
+    "script": "https://raw.githubusercontent.com/mosenwoek/proxy_app/refs/heads/main/Surge/sgmodule/hcnsec_cron.js"
   }
 }
