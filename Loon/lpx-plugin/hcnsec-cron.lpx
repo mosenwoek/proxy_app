@@ -1,14 +1,34 @@
-#!name=HCNSEC签到
-#!desc=JWT Token模式，首次需网页登录获取Token
+#!name=HCNSEC 签到
+#!desc=双向抓取网页登录凭证（请求 Cookie + 响应 Set-Cookie），每日 9 点自动签到。首次使用请在浏览器打开 api.hcnsec.cn 并登录一次。
 #!author=mosen
 #!homepage=https://github.com/mosenwoek/proxy_app
 #!icon=https://api.hcnsec.cn/favicon.ico
-#!tag=签到
+#!tag=签到,工具
+#!loon_version=3.5.1(983)
+#!date=2026-10-17
+#!type=normal
+
+[Argument]
+enable_capture = switch,true,tag=获取Cookie,desc=关闭后不再自动抓取网页凭证
+enable_checkin = switch,true,tag=执行签到,desc=关闭后只查询签到状态不真签到
+debug = switch,false,tag=调试日志,desc=打开后脚本会输出详细日志便于排查
+manual_cookie = input,"",type=string,tag=手动Cookie(兜底可留空),desc=自动抓不到时在电脑浏览器开发者工具里复制 server_name_session 那一整条粘到这里
 
 [Script]
-http-request ^https:\/\/api\.hcnsec\.cn\/api\/user\/self script-path=https://raw.githubusercontent.com/mosenwoek/proxy_app/refs/heads/main/Surge/sgmodule/hcnsec_cron.js, requires-body=false, tag=HCNSEC获取Token
 
-cron "0 9 * * *" script-path=https://raw.githubusercontent.com/mosenwoek/proxy_app/refs/heads/main/Surge/sgmodule/hcnsec_cron.js, tag=HCNSEC签到, timeout=120, img-url=https://api.hcnsec.cn/favicon.ico, enable=true
+# ── ① 请求侧捕获：读浏览器回传的 Cookie ──────────────────────
+# 匹配整个 API 域名而不是单个接口，任一次请求都能命中。
+# 没有 requires_body → 在 Request Header 阶段执行，不读 Body，不改请求。
+# enable=${enable_capture} —— 插件里的「获取Cookie」开关，关掉这条就不跑。
+request if ${url} ~= /^https:\/\/api\.hcnsec\.cn\// then script("https://raw.githubusercontent.com/mosenwoek/proxy_app/refs/heads/main/Surge/sgmodule/hcnsec_cron.js", {${debug}}) with enable=${enable_capture}, tag="HCNSEC·捕获·请求侧"
 
-[MitM]
+# ── ② 响应侧捕获：读服务器下发的 Set-Cookie ──────────────────
+# 服务器在登录 / 换发会话时下发 session cookie，这条路不依赖浏览器回传，
+# 是请求侧失效时的兜底。URL Guard 是必要条件（Loon 强制校验）。
+response if ${url} ~= /^https:\/\/api\.hcnsec\.cn\// then script("https://raw.githubusercontent.com/mosenwoek/proxy_app/refs/heads/main/Surge/sgmodule/hcnsec_cron.js", {${debug}}) with enable=${enable_capture}, tag="HCNSEC·捕获·响应侧"
+
+# ── ③ 每日签到 ──────────────────────────────────────────────
+cron "0 9 * * *" then script("https://raw.githubusercontent.com/mosenwoek/proxy_app/refs/heads/main/Surge/sgmodule/hcnsec_cron.js", {${enable_checkin}, ${manual_cookie}, ${debug}}) with tag="HCNSEC·签到", timeout=120, img_url="https://api.hcnsec.cn/favicon.ico"
+
+[Mitm]
 hostname = api.hcnsec.cn
