@@ -1,85 +1,47 @@
 /**
- * HCNSEC · Cookie 模式签到
- *
- * 使用方法：
- * 1. 配置好 Rewrite/MitM，打开 api.hcnsec.cn 网页登录
- * 2. 登录成功后会自动抓取 Cookie 并通知
- * 3. 之后每天自动签到
+ * HCNSEC · JWT Token 模式签到
  *
  * @Author: mosen
  * @Updated: 2026-10-16
- *
- * ===== Loon =====
- * [Rewrite]
- * ^https:\/\/api\.hcnsec\.cn\/api\/user\/self url script-request-header https://raw.githubusercontent.com/mosenwoek/proxy_app/refs/heads/main/Surge/sgmodule/hcnsec_cron.js
- *
- * [Script]
- * cron "0 9 * * *" script-path=https://raw.githubusercontent.com/mosenwoek/proxy_app/refs/heads/main/Surge/sgmodule/hcnsec_cron.js, tag=HCNSEC签到, timeout=120, img-url=https://api.hcnsec.cn/favicon.ico, enable=true
- *
- * [MitM]
- * hostname = api.hcnsec.cn
- *
- * ===== Surge =====
- * [Script]
- * HCNSEC获取Cookie = type=http-request,pattern=^https:\/\/api\.hcnsec\.cn\/api\/user\/self,requires-body=0,max-size=0,timeout=60,script-path=https://raw.githubusercontent.com/mosenwoek/proxy_app/refs/heads/main/Surge/sgmodule/hcnsec_cron.js
- * HCNSEC签到 = type=cron,cronexp=0 9 * * *,timeout=60,script-path=https://raw.githubusercontent.com/mosenwoek/proxy_app/refs/heads/main/Surge/sgmodule/hcnsec_cron.js
- *
- * [MITM]
- * hostname = %APPEND% api.hcnsec.cn
- *
- * ===== Quantumult X =====
- * [rewrite_local]
- * ^https:\/\/api\.hcnsec\.cn\/api\/user\/self url script-request-header https://raw.githubusercontent.com/mosenwoek/proxy_app/refs/heads/main/Surge/sgmodule/hcnsec_cron.js
- *
- * [task_local]
- * 0 9 * * * https://raw.githubusercontent.com/mosenwoek/proxy_app/refs/heads/main/Surge/sgmodule/hcnsec_cron.js, tag=HCNSEC签到, enabled=true
- *
- * [mitm]
- * hostname = api.hcnsec.cn
  */
 
 const $ = new Env("HCNSEC");
-const SCRIPT_VERSION = "2026-10-16.r2";
+const SCRIPT_VERSION = "2026-10-16.r3";
 
-const COOKIE_KEY = "hcnsec_cookie";
-const USERID_KEY = "hcnsec_userid";
+const TOKEN_KEY = "hcnsec_token";
 const CLEAR_KEY = "hcnsec_clear";
-const DEBUG_KEY = "hcnsec_debug";
 
 const BASE_URL = "https://api.hcnsec.cn";
 const UA = "Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.5 Mobile/15E148 Safari/604.1";
 
-// 判断运行模式：抓 Cookie 还是签到
 const isRequest = typeof $request !== "undefined";
 
 if (isRequest) {
-    getCookie();
+    getToken();
 } else {
     run().catch((e) => $.msg($.name, "❌ 运行失败", e.message)).finally(() => $.done());
 }
 
-function getCookie() {
+function getToken() {
     try {
         const headers = $request.headers;
-        const cookie = headers["Cookie"] || headers["cookie"] || "";
-        const userId = headers["New-Api-User"] || headers["new-api-user"] || "";
+        // 兼容大小写
+        const auth = headers["Authorization"] || headers["authorization"] || "";
         
-        if (!cookie.includes("session=")) {
+        if (!auth.startsWith("Bearer ")) {
             $.done({});
             return;
         }
         
-        const oldCookie = $.getdata(COOKIE_KEY) || "";
-        const sessionMatch = cookie.match(/session=[^;\s]+/);
-        const session = sessionMatch ? sessionMatch[0] : "";
+        const token = auth.substring(7); // 去掉 "Bearer "
+        const oldToken = $.getdata(TOKEN_KEY) || "";
         
-        if (session && session !== oldCookie) {
-            $.setdata(session, COOKIE_KEY);
-            if (userId) $.setdata(userId, USERID_KEY);
-            $.msg($.name, "✅ Cookie 获取成功", "可以关闭网页了，之后会自动签到");
+        if (token && token !== oldToken) {
+            $.setdata(token, TOKEN_KEY);
+            $.msg($.name, "✅ Token 获取成功", "可以关闭网页了，之后会自动签到");
         }
     } catch (e) {
-        $.log(`[ERROR] 获取 Cookie 失败: ${e.message}`);
+        $.log(`[ERROR] 获取 Token 失败: ${e.message}`);
     }
     $.done({});
 }
@@ -87,25 +49,31 @@ function getCookie() {
 async function run() {
     $.log(`[INFO] 脚本版本 ${SCRIPT_VERSION}`);
     
-    // 清除 Cookie
     const clear = $.getdata(CLEAR_KEY);
     if (clear === "true" || clear === "1") {
-        $.setdata("", COOKIE_KEY);
-        $.setdata("", USERID_KEY);
+        $.setdata("", TOKEN_KEY);
         $.setdata("false", CLEAR_KEY);
-        $.msg($.name, "✅ Cookie 已清除", "请重新打开网页登录获取");
+        $.msg($.name, "✅ Token 已清除", "请重新打开网页登录获取");
         return;
     }
     
-    const cookie = $.getdata(COOKIE_KEY);
-    if (!cookie) {
-        $.msg($.name, "🚫 未获取 Cookie", "请先打开 api.hcnsec.cn 网页登录");
+    const token = $.getdata(TOKEN_KEY);
+    if (!token) {
+        $.msg($.name, "🚫 未获取 Token", "请先打开 api.hcnsec.cn 网页登录");
         return;
     }
     
-    const userId = $.getdata(USERID_KEY) || "";
+    // 检查 JWT 是否过期
+    try {
+        const payload = JSON.parse(atob(token.split(".")[1]));
+        const exp = payload.exp * 1000;
+        if (Date.now() > exp) {
+            $.setdata("", TOKEN_KEY);
+            $.msg($.name, "❌ Token 已过期", "请重新打开网页登录获取");
+            return;
+        }
+    } catch (_) {}
     
-    // 获取余额显示配置
     let quotaUnit = null;
     try {
         const status = await request("GET", "/api/status", {}, "配置查询");
@@ -117,19 +85,16 @@ async function run() {
     const headers = {
         "User-Agent": UA,
         Accept: "application/json",
-        Cookie: cookie,
-        "New-API-User": userId,
+        Authorization: `Bearer ${token}`,
         Referer: `${BASE_URL}/console`,
     };
     
-    // 查询用户信息（同时触发签到）
     let userInfo;
     try {
         userInfo = await request("GET", "/api/user/self", headers, "用户查询");
         if (!userInfo.success) {
-            // Cookie 可能过期了
-            $.setdata("", COOKIE_KEY);
-            $.msg($.name, "❌ Cookie 已过期", "请重新打开网页登录获取");
+            $.setdata("", TOKEN_KEY);
+            $.msg($.name, "❌ Token 已失效", "请重新打开网页登录获取");
             return;
         }
     } catch (e) {
@@ -146,7 +111,6 @@ async function run() {
         stats.push(`⚡ 累计调用：${user.request_count} 次`);
     }
     
-    // 查签到记录
     let checkinRecord = null;
     try {
         const logs = await request("GET", "/api/log/self?p=1&page_size=20", headers, "签到记录");
