@@ -1,296 +1,213 @@
 /**
- * HCNSEC · 每日登录签到，查看余额与消耗
+ * HCNSEC · Cookie 模式签到
  *
- * 抓取: 无需抓包，Loon 在插件设置填写账号和密码，其他平台使用 BoxJS
- * 签到: cron 每天 09:00 自动运行
+ * 使用方法：
+ * 1. 配置好 Rewrite/MitM，打开 api.hcnsec.cn 网页登录
+ * 2. 登录成功后会自动抓取 Cookie 并通知
+ * 3. 之后每天自动签到
  *
  * @Author: mosen
  * @Updated: 2026-10-16
  *
  * ===== Loon =====
- * [Argument]
- * username = input,"",tag=账号,desc=网站账号或邮箱
- * password = input,"",tag=密码,desc=网站登录密码
- * accounts = input,"",tag=多账号（JSON）,desc=选填；填写后优先使用列表
- * debug = switch,false,tag=调试模式,desc=打印详细日志
+ * [Rewrite]
+ * ^https:\/\/api\.hcnsec\.cn\/api\/user\/self url script-request-header https://raw.githubusercontent.com/mosenwoek/proxy_app/refs/heads/main/Surge/sgmodule/hcnsec_cron.js
  *
  * [Script]
- * cron "0 9 * * *" script-path=https://raw.githubusercontent.com/mosenwoek/proxy_app/refs/heads/main/Surge/sgmodule/hcnsec_cron.js, argument=[{username},{password},{accounts},{debug}], tag=HCNSEC签到, timeout=120, img-url=https://api.hcnsec.cn/favicon.ico, enable=true
+ * cron "0 9 * * *" script-path=https://raw.githubusercontent.com/mosenwoek/proxy_app/refs/heads/main/Surge/sgmodule/hcnsec_cron.js, tag=HCNSEC签到, timeout=120, img-url=https://api.hcnsec.cn/favicon.ico, enable=true
+ *
+ * [MitM]
+ * hostname = api.hcnsec.cn
  *
  * ===== Surge =====
  * [Script]
+ * HCNSEC获取Cookie = type=http-request,pattern=^https:\/\/api\.hcnsec\.cn\/api\/user\/self,requires-body=0,max-size=0,timeout=60,script-path=https://raw.githubusercontent.com/mosenwoek/proxy_app/refs/heads/main/Surge/sgmodule/hcnsec_cron.js
  * HCNSEC签到 = type=cron,cronexp=0 9 * * *,timeout=60,script-path=https://raw.githubusercontent.com/mosenwoek/proxy_app/refs/heads/main/Surge/sgmodule/hcnsec_cron.js
  *
+ * [MITM]
+ * hostname = %APPEND% api.hcnsec.cn
+ *
  * ===== Quantumult X =====
+ * [rewrite_local]
+ * ^https:\/\/api\.hcnsec\.cn\/api\/user\/self url script-request-header https://raw.githubusercontent.com/mosenwoek/proxy_app/refs/heads/main/Surge/sgmodule/hcnsec_cron.js
+ *
  * [task_local]
  * 0 9 * * * https://raw.githubusercontent.com/mosenwoek/proxy_app/refs/heads/main/Surge/sgmodule/hcnsec_cron.js, tag=HCNSEC签到, enabled=true
  *
- * ===== Stash / Egern =====
- * cron:
- *   script:
- *     - name: HCNSEC签到
- *       cron: '0 9 * * *'
- *       timeout: 60
+ * [mitm]
+ * hostname = api.hcnsec.cn
  */
 
-// ==BoxJs==
-// @name HCNSEC 签到
-// @author mosen
-// @icon https://api.hcnsec.cn/favicon.ico
-// @keys hcnsec_username hcnsec_password hcnsec_debug
-// @settings [
-//   { "id": "hcnsec_username", "name": "账号", "val": "", "type": "text", "placeholder": "填写账号或邮箱" },
-//   { "id": "hcnsec_password", "name": "密码", "val": "", "type": "text", "placeholder": "登录密码" },
-//   { "id": "hcnsec_debug", "name": "调试模式", "val": false, "type": "boolean" }
-// ]
-// ==/BoxJs==
-
 const $ = new Env("HCNSEC");
-const SCRIPT_VERSION = "2026-10-16.r1";
-$.log(`[INFO] 脚本版本 ${SCRIPT_VERSION}`);
+const SCRIPT_VERSION = "2026-10-16.r2";
 
-const USER_KEY = "hcnsec_username";
-const PASSWORD_KEY = "hcnsec_password";
+const COOKIE_KEY = "hcnsec_cookie";
+const USERID_KEY = "hcnsec_userid";
 const CLEAR_KEY = "hcnsec_clear";
 const DEBUG_KEY = "hcnsec_debug";
-const IS_LOON = $.isLoon();
-const PLUGIN = typeof $argument !== "undefined" && $argument && typeof $argument === "object" ? $argument : {};
-const SETTINGS_PAGE = IS_LOON ? "Loon 插件设置" : "BoxJS";
+
 const BASE_URL = "https://api.hcnsec.cn";
 const UA = "Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.5 Mobile/15E148 Safari/604.1";
 
-run().catch((error) => {
-    $.msg($.name, "❌ 运行失败", error.message);
-}).finally(() => $.done());
+// 判断运行模式：抓 Cookie 还是签到
+const isRequest = typeof $request !== "undefined";
+
+if (isRequest) {
+    getCookie();
+} else {
+    run().catch((e) => $.msg($.name, "❌ 运行失败", e.message)).finally(() => $.done());
+}
+
+function getCookie() {
+    try {
+        const headers = $request.headers;
+        const cookie = headers["Cookie"] || headers["cookie"] || "";
+        const userId = headers["New-Api-User"] || headers["new-api-user"] || "";
+        
+        if (!cookie.includes("session=")) {
+            $.done({});
+            return;
+        }
+        
+        const oldCookie = $.getdata(COOKIE_KEY) || "";
+        const sessionMatch = cookie.match(/session=[^;\s]+/);
+        const session = sessionMatch ? sessionMatch[0] : "";
+        
+        if (session && session !== oldCookie) {
+            $.setdata(session, COOKIE_KEY);
+            if (userId) $.setdata(userId, USERID_KEY);
+            $.msg($.name, "✅ Cookie 获取成功", "可以关闭网页了，之后会自动签到");
+        }
+    } catch (e) {
+        $.log(`[ERROR] 获取 Cookie 失败: ${e.message}`);
+    }
+    $.done({});
+}
 
 async function run() {
-    const clear = IS_LOON ? null : $.getdata(CLEAR_KEY);
+    $.log(`[INFO] 脚本版本 ${SCRIPT_VERSION}`);
+    
+    // 清除 Cookie
+    const clear = $.getdata(CLEAR_KEY);
     if (clear === "true" || clear === "1") {
-        $.setdata("", USER_KEY);
-        $.setdata("", PASSWORD_KEY);
+        $.setdata("", COOKIE_KEY);
+        $.setdata("", USERID_KEY);
         $.setdata("false", CLEAR_KEY);
-        $.msg($.name, "✅ 账号信息已清除", "请重新填写账号密码");
+        $.msg($.name, "✅ Cookie 已清除", "请重新打开网页登录获取");
         return;
     }
-
-    const accounts = readAccounts();
-    if (!accounts.length) {
-        $.msg($.name, "🚫 未配置账号", `请在 ${SETTINGS_PAGE} 中填写账号密码`);
+    
+    const cookie = $.getdata(COOKIE_KEY);
+    if (!cookie) {
+        $.msg($.name, "🚫 未获取 Cookie", "请先打开 api.hcnsec.cn 网页登录");
         return;
     }
-
+    
+    const userId = $.getdata(USERID_KEY) || "";
+    
+    // 获取余额显示配置
     let quotaUnit = null;
     try {
-        const status = await request("GET", "/api/status", { Accept: "application/json" }, undefined, "配置查询");
-        const config = status.json.data;
-        if (status.json.success === true && config && config.display_in_currency === true
-            && typeof config.quota_per_unit === "number" && Number.isFinite(config.quota_per_unit) && config.quota_per_unit > 0) {
-            quotaUnit = config.quota_per_unit;
+        const status = await request("GET", "/api/status", {}, "配置查询");
+        if (status.success && status.data && status.data.display_in_currency && status.data.quota_per_unit > 0) {
+            quotaUnit = status.data.quota_per_unit;
         }
-    } catch (_) {
-        debug("余额显示配置未取得，将显示原始额度");
-    }
-
-    const results = [];
-    for (let i = 0; i < accounts.length; i++) {
-        debug(`开始账号 ${i + 1}/${accounts.length}`);
-        try {
-            results.push(await checkin(accounts[i], quotaUnit));
-        } catch (error) {
-            results.push({ title: "❌ 运行失败", content: error.message });
-        }
-    }
-
-    if (results.length === 1) {
-        $.msg($.name, results[0].title, `👤 账号：${maskAccount(accounts[0].username)}\n${results[0].content}`);
-    } else {
-        $.msg($.name, `签到汇总（${results.length} 个账号）`, results.map((result, i) =>
-            `👤 账号 ${i + 1} · ${maskAccount(accounts[i].username)}\n${result.title}\n${result.content}`).join("\n\n"));
-    }
-}
-
-function readAccounts() {
-    const multi = IS_LOON ? (PLUGIN.accounts || "").trim() : "";
-    if (multi) {
-        let accounts;
-        try {
-            accounts = JSON.parse(multi);
-        } catch (_) {
-            throw new Error("多账号格式错误，请按使用说明填写 JSON 数组");
-        }
-        if (!Array.isArray(accounts) || !accounts.length) {
-            throw new Error("多账号必须是非空 JSON 数组");
-        }
-        return accounts.map((account, i) => {
-            if (!account || typeof account.username !== "string" || !account.username.trim()
-                || typeof account.password !== "string" || !account.password) {
-                throw new Error(`多账号第 ${i + 1} 项缺少有效的 username 或 password`);
-            }
-            return { username: account.username.trim(), password: account.password };
-        });
-    }
-    const username = ((IS_LOON ? PLUGIN.username : $.getdata(USER_KEY)) || "").trim();
-    const password = (IS_LOON ? PLUGIN.password : $.getdata(PASSWORD_KEY)) || "";
-    return username && password ? [{ username, password }] : [];
-}
-
-async function checkin({ username, password }, quotaUnit) {
+    } catch (_) {}
+    
     const headers = {
         "User-Agent": UA,
-        Accept: "application/json, text/plain, */*",
-        "Content-Type": "application/json",
-        Origin: BASE_URL,
-        Referer: `${BASE_URL}/login`,
-    };
-    const loginStarted = Math.floor(Date.now() / 1000);
-    const login = await request("POST", "/api/user/login", headers, JSON.stringify({ username, password }), "登录");
-    const loginFinished = Math.floor(Date.now() / 1000);
-
-    if (login.json.success !== true) {
-        return { title: "❌ 登录失败", content: `请先在网页确认账号密码及是否需要验证码，再更新 ${SETTINGS_PAGE}` };
-    }
-
-    const data = login.json.data;
-    if (!data || typeof data !== "object" || Array.isArray(data)) {
-        return { title: "⚠️ 签到待确认", content: "登录成功，但响应缺少用户信息，请到网站核对" };
-    }
-    debug(`登录成功；checked_in=${data.checked_in === true ? "true" : data.checked_in === false ? "false" : "缺失"}`);
-
-    const cookie = sessionCookie(login.headers);
-    if (!cookie || !Number.isInteger(data.id) || data.id <= 0) {
-        return { title: "⚠️ 签到待确认", content: "登录响应缺少 Cookie 或用户编号，请到网站核对" };
-    }
-
-    const userHeaders = {
-        ...headers,
-        Referer: `${BASE_URL}/console`,
+        Accept: "application/json",
         Cookie: cookie,
-        "New-API-User": String(data.id),
+        "New-API-User": userId,
+        Referer: `${BASE_URL}/console`,
     };
-
-    let stats;
+    
+    // 查询用户信息（同时触发签到）
+    let userInfo;
     try {
-        const profile = await request("GET", "/api/user/self", userHeaders, undefined, "余额查询");
-        const quota = profile.json.data && profile.json.data.quota;
-        if (profile.json.success !== true || typeof quota !== "number" || !Number.isFinite(quota)) {
-            throw new Error("余额查询未返回有效额度");
+        userInfo = await request("GET", "/api/user/self", headers, "用户查询");
+        if (!userInfo.success) {
+            // Cookie 可能过期了
+            $.setdata("", COOKIE_KEY);
+            $.msg($.name, "❌ Cookie 已过期", "请重新打开网页登录获取");
+            return;
         }
-        const user = profile.json.data;
-        stats = `${formatAmount("💳 当前余额", quota, quotaUnit)}\n${formatAmount("📉 累计消耗", user.used_quota, quotaUnit)}`;
-        if (Number.isInteger(user.request_count) && user.request_count >= 0) {
-            stats += `\n⚡ 累计调用：${user.request_count} 次`;
-        }
-    } catch (error) {
-        stats = `💳 当前余额：查询失败\n📉 累计消耗：查询失败`;
+    } catch (e) {
+        $.msg($.name, "❌ 请求失败", e.message);
+        return;
     }
-
+    
+    const user = userInfo.data;
+    const stats = [
+        formatAmount("💳 当前余额", user.quota, quotaUnit),
+        formatAmount("📉 累计消耗", user.used_quota, quotaUnit),
+    ];
+    if (typeof user.request_count === "number") {
+        stats.push(`⚡ 累计调用：${user.request_count} 次`);
+    }
+    
+    // 查签到记录
     let checkinRecord = null;
-    let detail;
     try {
-        const logs = await request("GET", "/api/log/self?p=1&page_size=20", {
-            ...userHeaders,
-            Referer: `${BASE_URL}/console/log`,
-        }, undefined, "签到记录查询");
-        if (logs.json.success !== true || !logs.json.data || !Array.isArray(logs.json.data.items)) {
-            throw new Error("签到记录查询未成功");
+        const logs = await request("GET", "/api/log/self?p=1&page_size=20", headers, "签到记录");
+        if (logs.success && logs.data && Array.isArray(logs.data.items)) {
+            checkinRecord = findTodayCheckin(logs.data.items);
         }
-        const items = logs.json.data.items;
-        checkinRecord = findTodayCheckin(items, Date.now());
-        debug(`最近记录数=${items.length}；今日签到记录=${!!checkinRecord}`);
-        if (!checkinRecord) detail = "最近日志中未找到今日签到记录，请到网站核对";
-    } catch (error) {
-        detail = error.message;
-    }
-
+    } catch (_) {}
+    
+    const username = user.username || user.email || "未知";
+    
     if (checkinRecord) {
         const time = new Date(checkinRecord.created_at * 1000);
-        const clock = [time.getHours(), time.getMinutes(), time.getSeconds()].map((n) => String(n).padStart(2, "0")).join(":");
-        const isNew = data.checked_in === true && checkinRecord.created_at >= loginStarted && checkinRecord.created_at <= loginFinished;
-        const reward = formatCheckinReward(checkinRecord.content, isNew);
-        return { title: "✅ 今日签到已确认", content: `${reward}\n${stats}\n🕒 签到时间：${clock}` };
+        const clock = [time.getHours(), time.getMinutes(), time.getSeconds()].map(n => String(n).padStart(2, "0")).join(":");
+        const reward = formatReward(checkinRecord.content);
+        $.msg($.name, "✅ 今日已签到", `👤 账号：${maskAccount(username)}\n${reward}\n${stats.join("\n")}\n🕒 签到时间：${clock}`);
     } else {
-        const state = data.checked_in === true ? "服务端返回已签到，但日志尚未确认" : "登录成功，签到状态尚未确认";
-        return { title: "⚠️ 签到待确认", content: `🎁 签到奖励：待确认\n${stats}\n\n${state}\n${detail || ""}` };
+        $.msg($.name, "⚠️ 签到状态未确认", `👤 账号：${maskAccount(username)}\n${stats.join("\n")}\n请到网站核对签到记录`);
     }
 }
 
-function maskAccount(username) {
-    const name = username.split("@")[0];
-    return name.length > 4 ? `${name.slice(0, 2)}***${name.slice(-2)}` : `${name.slice(0, 1)}***`;
-}
-
-function formatAmount(label, value, quotaUnit) {
-    if (typeof value !== "number" || !Number.isFinite(value)) return `${label}：未返回`;
-    return quotaUnit === null ? `${label}（原始额度）：${value}` : `${label}：$${(value / quotaUnit).toFixed(2)}`;
-}
-
-function formatCheckinReward(content, isNew) {
-    const match = content.trim().match(/签到成功.*?(?:增加|奖励).*?\$\s*(\d+(?:\.\d+)?)/);
-    const amount = match ? Number(match[1]) : NaN;
-    const label = isNew ? "🎁 本次奖励" : "🎁 今日奖励";
-    if (!Number.isFinite(amount)) return `${label}：金额未识别，请到网站核对`;
-    return `${label}：${amount > 0 ? "+" : ""}$${amount.toFixed(2)}${isNew ? "" : "（今日记录）"}`;
-}
-
-function findTodayCheckin(items, now) {
-    const start = new Date(now);
-    start.setHours(0, 0, 0, 0);
-    let latest = null;
-    for (const item of items) {
-        if (item && item.type === 4
-            && typeof item.content === "string" && item.content.includes("签到成功")
-            && typeof item.created_at === "number" && Number.isFinite(item.created_at)
-            && item.created_at * 1000 >= start.getTime() && item.created_at * 1000 <= now
-            && (!latest || item.created_at > latest.created_at)) latest = item;
-    }
-    return latest;
-}
-
-function sessionCookie(headers) {
-    const key = Object.keys(headers).find((name) => name.toLowerCase() === "set-cookie");
-    const raw = key ? [].concat(headers[key]).join("\n") : "";
-    const match = raw.match(/(?:^|[\n,])\s*(?:set-cookie:\s*)?(session=[^;\s,]+)/i);
-    return match ? match[1] : "";
-}
-
-function request(method, path, headers, body, label) {
+function request(method, path, headers, label) {
     return new Promise((resolve, reject) => {
-        const options = { url: BASE_URL + path, headers };
-        if (body !== undefined) options.body = body;
-        if ($.isLoon()) {
-            options.insecure = false;
-            options["auto-redirect"] = false;
-            options["auto-cookie"] = false;
-        }
-        $.send(options, method, (error, response, text) => {
-            if (error) {
-                reject(new Error(`${label}网络请求失败，请检查分流或稍后重试`));
-                return;
-            }
-            const status = Number(response && (response.status || response.statusCode));
-            debug(`${label} HTTP ${status}`);
-            if (status < 200 || status >= 300 || !status) {
-                reject(new Error(`${label}返回 HTTP ${status || "未知"}`));
-                return;
-            }
-            let json;
+        const options = {
+            url: BASE_URL + path,
+            headers: { "User-Agent": UA, Accept: "application/json", ...headers },
+        };
+        $.send(options, method, (err, resp, text) => {
+            if (err) return reject(new Error(`${label}网络错误`));
             try {
-                json = JSON.parse(text);
+                resolve(JSON.parse(text));
             } catch (_) {
-                reject(new Error(`${label}返回非 JSON 内容`));
-                return;
+                reject(new Error(`${label}响应异常`));
             }
-            if (!json || typeof json !== "object" || Array.isArray(json)) {
-                reject(new Error(`${label}响应格式异常`));
-                return;
-            }
-            resolve({ json, headers: response.headers || {} });
         });
     });
 }
 
-function debug(message) {
-    if (IS_LOON ? PLUGIN.debug === true : $.getdata(DEBUG_KEY) === "true") $.log(`[DEBUG] ${message}`);
+function findTodayCheckin(items) {
+    const start = new Date();
+    start.setHours(0, 0, 0, 0);
+    for (const item of items) {
+        if (item.type === 4 && item.content && item.content.includes("签到成功") && item.created_at * 1000 >= start.getTime()) {
+            return item;
+        }
+    }
+    return null;
+}
+
+function formatAmount(label, value, quotaUnit) {
+    if (typeof value !== "number") return `${label}：--`;
+    return quotaUnit ? `${label}：$${(value / quotaUnit).toFixed(2)}` : `${label}：${value}`;
+}
+
+function formatReward(content) {
+    const match = content.match(/\$\s*(\d+(?:\.\d+)?)/);
+    return `🎁 今日奖励：${match ? "$" + match[1] : "未识别"}`;
+}
+
+function maskAccount(u) {
+    const name = (u || "").split("@")[0];
+    return name.length > 3 ? `${name.slice(0, 2)}***` : `${name}***`;
 }
 
 function Env(s) {
@@ -299,10 +216,10 @@ function Env(s) {
     this.isQuanX = () => typeof $task !== "undefined";
     this.isLoon = () => typeof $loon !== "undefined";
     this.log = (...a) => console.log(a.join("\n"));
-    this.msg = (t = this.name, s = "", b = "") => {
+    this.msg = (t, s, b) => {
         if (this.isSurge() || this.isLoon()) $notification.post(t, s, b);
         else if (this.isQuanX()) $notify(t, s, b);
-        console.log(["", `====📣${t}====`, s, b].filter(Boolean).join("\n"));
+        console.log(`====📣${t}====\n${s}\n${b}`);
     };
     this.getdata = (k) => {
         if (this.isSurge() || this.isLoon()) return $persistentStore.read(k);
@@ -317,19 +234,10 @@ function Env(s) {
     this.send = (req, method, cb) => {
         if (this.isSurge() || this.isLoon()) {
             const fn = method === "POST" ? $httpClient.post : $httpClient.get;
-            fn(req, (err, resp, data) => {
-                if (resp) {
-                    resp.body = data;
-                    resp.statusCode = resp.status || resp.statusCode;
-                }
-                cb(err, resp, data);
-            });
+            fn(req, (err, resp, data) => cb(err, resp, data));
         } else if (this.isQuanX()) {
             req.method = method;
-            $task.fetch(req).then(
-                (r) => { r.status = r.statusCode; cb(null, r, r.body); },
-                (e) => cb(e.error || e, null, null),
-            );
+            $task.fetch(req).then(r => cb(null, r, r.body), e => cb(e));
         }
     };
     this.done = (v = {}) => { if (typeof $done !== "undefined") $done(v); };
