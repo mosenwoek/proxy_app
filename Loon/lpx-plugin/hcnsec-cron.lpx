@@ -1,0 +1,15 @@
+#!name=HCNSEC签到
+#!desc=每日自动登录签到，查看余额与消耗
+#!author=mosen
+#!homepage=https://github.com/mosenwoek/proxy_app
+#!icon=https://api.hcnsec.cn/favicon.ico
+#!tag=签到
+
+[Argument]
+username = input,"",tag=账号,desc=网站账号或邮箱
+password = input,"",tag=密码,desc=网站登录密码
+accounts = input,"",tag=多账号（JSON）,desc=选填；填写后优先使用列表
+debug = switch,false,tag=调试模式,desc=打印详细日志
+
+[Script]
+cron "0 9 * * *" script-path=https://raw.githubusercontent.com/mosenwoek/proxy_app/refs/heads/main/Surge/sgmodule/hcnsec_cron.js, argument=[{username},{password},{accounts},{debug}], tag=HCNSEC签到, timeout=120, img-url=https://api.hcnsec.cn/favicon.ico, enable=true
