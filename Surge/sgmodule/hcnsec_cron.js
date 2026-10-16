@@ -1,0 +1,199 @@
+/**
+ * HCNSEC · 每日登录签到
+ * 
+ * @Author: Adapted by mosen
+ * @Updated: 2024-05-22
+ *
+ * ===== BoxJS 配置 =====
+ * 如果使用 BoxJS，请确保填写以下 Key:
+ * hcnsec_username : 账号
+ * hcnsec_password : 密码
+ * hcnsec_debug    : true/false
+ *
+ * ===== Loon/Surge/QX/Stash =====
+ * 账号配置: 请在 BoxJS 或插件设置中填写 hcnsec_username 和 hcnsec_password
+ */
+
+// ==BoxJs==
+// @name HCNSEC 签到
+// @author mosen
+// @icon https://api.hcnsec.cn/favicon.ico
+// @keys hcnsec_username hcnsec_password hcnsec_debug
+// @settings [
+//   { "id": "hcnsec_username", "name": "账号", "val": "", "type": "text", "placeholder": "填写账号或邮箱" },
+//   { "id": "hcnsec_password", "name": "密码", "val": "", "type": "text", "placeholder": "登录密码" },
+//   { "id": "hcnsec_debug", "name": "调试模式", "val": false, "type": "boolean" }
+// ]
+// ==/BoxJs==
+
+const $ = new Env("HCNSEC");
+const SCRIPT_VERSION = "1.1.0";
+$.log(`[INFO] 脚本版本 ${SCRIPT_VERSION}`);
+
+const USER_KEY = "hcnsec_username";
+const PASSWORD_KEY = "hcnsec_password";
+const CLEAR_KEY = "hcnsec_clear";
+const DEBUG_KEY = "hcnsec_debug";
+const IS_LOON = $.isLoon();
+const PLUGIN = typeof $argument !== "undefined" && $argument && typeof $argument === "object" ? $argument : {};
+const SETTINGS_PAGE = IS_LOON ? "Loon 插件设置" : "BoxJS";
+const BASE_URL = "https://api.hcnsec.cn";
+const UA = "Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.5 Mobile/15E148 Safari/604.1";
+
+run().catch((error) => {
+    $.msg($.name, "❌ 运行失败", error.message);
+}).finally(() => $.done());
+
+async function run() {
+    const clear = IS_LOON ? null : $.getdata(CLEAR_KEY);
+    if (clear === "true" || clear === "1") {
+        $.setdata("", USER_KEY);
+        $.setdata("", PASSWORD_KEY);
+        $.setdata("false", CLEAR_KEY);
+        $.msg($.name, "✅ 账号信息已清除", "请重新填写账号密码");
+        return;
+    }
+
+    const accounts = readAccounts();
+    if (!accounts.length) {
+        $.msg($.name, "🚫 未配置账号", `请在 ${SETTINGS_PAGE} 中填写账号密码`);
+        return;
+    }
+
+    let quotaUnit = null;
+    try {
+        const status = await request("GET", "/api/status", { Accept: "application/json" }, undefined, "配置查询");
+        const config = status.json.data;
+        if (status.json.success === true && config && config.display_in_currency === true) {
+            quotaUnit = config.quota_per_unit;
+        }
+    } catch (_) {
+        debug("余额显示配置未取得");
+    }
+
+    const results = [];
+    for (let i = 0; i < accounts.length; i++) {
+        try {
+            results.push(await checkin(accounts[i], quotaUnit));
+        } catch (error) {
+            results.push({ title: "❌ 运行失败", content: error.message });
+        }
+    }
+
+    if (results.length === 1) {
+        $.msg($.name, results[0].title, `👤 账号：${maskAccount(accounts[0].username)}\n${results[0].content}`);
+    } else {
+        $.msg($.name, `签到汇总(${results.length} 个账号)`, results.map((result, i) =>
+            `👤 账号 ${i + 1} · ${maskAccount(accounts[i].username)}\n${result.title}\n${result.content}`).join("\n\n"));
+    }
+}
+
+function readAccounts() {
+    const multi = IS_LOON ? (PLUGIN.accounts || "").trim() : "";
+    if (multi) {
+        try {
+            const accounts = JSON.parse(multi);
+            return accounts.map(a => ({ username: a.username.trim(), password: a.password }));
+        } catch (_) { throw new Error("多账号格式错误"); }
+    }
+    const username = ((IS_LOON ? PLUGIN.username : $.getdata(USER_KEY)) || "").trim();
+    const password = (IS_LOON ? PLUGIN.password : $.getdata(PASSWORD_KEY)) || "";
+    return username && password ? [{ username, password }] : [];
+}
+
+async function checkin({ username, password }, quotaUnit) {
+    const headers = {
+        "User-Agent": UA,
+        "Content-Type": "application/json",
+        "Origin": BASE_URL,
+        "Referer": `${BASE_URL}/login`,
+    };
+    const loginStarted = Math.floor(Date.now() / 1000);
+    const login = await request("POST", "/api/user/login", headers, JSON.stringify({ username, password }), "登录");
+    const loginFinished = Math.floor(Date.now() / 1000);
+    
+    if (login.json.success !== true) {
+        return { title: "❌ 登录失败", content: "账号密码错误或需要验证码" };
+    }
+
+    const data = login.json.data;
+    const cookie = sessionCookie(login.headers);
+    const userHeaders = {
+        ...headers,
+        "Cookie": cookie,
+        "New-API-User": String(data.id),
+    };
+
+    let stats = "";
+    try {
+        const profile = await request("GET", "/api/user/self", userHeaders, undefined, "余额查询");
+        const user = profile.json.data;
+        stats = `${formatAmount("💳 当前余额", user.quota, quotaUnit)}\n${formatAmount("📉 累计消耗", user.used_quota, quotaUnit)}`;
+    } catch (e) { stats = "余额查询失败"; }
+
+    let checkinRecord = null;
+    try {
+        const logs = await request("GET", "/api/log/self?p=1&page_size=20", userHeaders, undefined, "记录查询");
+        if (logs.json.success && logs.json.data.items) {
+            checkinRecord = findTodayCheckin(logs.json.data.items, Date.now());
+        }
+    } catch (e) { debug("记录查询异常"); }
+
+    if (checkinRecord) {
+        const isNew = data.checked_in === true && checkinRecord.created_at >= loginStarted;
+        return { title: "✅ 签到成功", content: `${formatCheckinReward(checkinRecord.content, isNew)}\n${stats}` };
+    } else {
+        return { title: "⚠️ 签到状态未知", content: `${stats}\n请手动核对网站` };
+    }
+}
+
+function maskAccount(u) { return u.split('@')[0].slice(0,2) + "***"; }
+function formatAmount(l, v, q) { return q ? `${l}：$${(v/q).toFixed(2)}` : `${l}：${v}`; }
+function formatCheckinReward(c, isNew) {
+    const match = c.match(/\$\s*(\d+(?:\.\d+)?)/);
+    return `${isNew ? "🎁 本次奖励" : "🎁 今日奖励"}：${match ? "$" + match[1] : "金额未识别"}`;
+}
+function findTodayCheckin(items, now) {
+    const start = new Date(now).setHours(0,0,0,0);
+    return items.find(i => i.type === 4 && i.content.includes("签到成功") && i.created_at * 1000 >= start);
+}
+function sessionCookie(h) {
+    const raw = [].concat(h['set-cookie'] || "").join("\n");
+    const match = raw.match(/session=[^;\s,]+/i);
+    return match ? match[0] : "";
+}
+function request(method, path, headers, body, label) {
+    return new Promise((resolve, reject) => {
+        const options = { url: BASE_URL + path, headers };
+        if (body) options.body = body;
+        $.send(options, method, (err, resp, text) => {
+            if (err) return reject(new Error(`${label}网络错误`));
+            try { resolve({ json: JSON.parse(text), headers: resp.headers || {} }); }
+            catch (e) { reject(new Error(`${label}响应非JSON`)); }
+        });
+    });
+}
+function debug(m) { if ($.getdata(DEBUG_KEY) === "true") $.log(`[DEBUG] ${m}`); }
+function Env(s) {
+    this.name = s;
+    this.isLoon = () => typeof $loon !== "undefined";
+    this.isSurge = () => typeof $httpClient !== "undefined";
+    this.isQuanX = () => typeof $task !== "undefined";
+    this.log = (...a) => console.log(a.join("\n"));
+    this.msg = (t, s, b) => {
+        if (this.isSurge() || this.isLoon()) $notification.post(t, s, b);
+        else if (this.isQuanX()) $notify(t, s, b);
+    };
+    this.getdata = (k) => (this.isSurge() || this.isLoon()) ? $persistentStore.read(k) : $prefs.valueForKey(k);
+    this.setdata = (v, k) => (this.isSurge() || this.isLoon()) ? $persistentStore.write(v, k) : $prefs.setValueForKey(v, k);
+    this.send = (req, method, cb) => {
+        if (this.isSurge() || this.isLoon()) {
+            const fn = method === "POST" ? $httpClient.post : $httpClient.get;
+            fn(req, (err, resp, data) => cb(err, resp, data));
+        } else {
+            req.method = method;
+            $task.fetch(req).then(r => cb(null, r, r.body)).catch(e => cb(e));
+        }
+    };
+    this.done = () => { if (typeof $done !== "undefined") $done(); };
+}
