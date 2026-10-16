@@ -1,33 +1,43 @@
 {
-  "hcnsec": {
-    "info": {
+  "id": "mosen.hcnsec",
+  "name": "HCNSEC 签到",
+  "author": "@mosen",
+  "icon": "https://api.hcnsec.cn/favicon.ico",
+  "repo": "https://github.com/mosenwoek/proxy_app",
+  "apps": [
+    {
+      "id": "mosen.hcnsec.checkin",
       "name": "HCNSEC 签到",
-      "author": "mosen",
-      "desc": "每日自动登录签到，查看余额与消耗",
-      "icon": "https://api.hcnsec.cn/favicon.ico"
-    },
-    "settings": [
-      {
-        "id": "hcnsec_username",
-        "name": "账号",
-        "type": "text",
-        "val": "",
-        "placeholder": "填写账号或邮箱"
-      },
-      {
-        "id": "hcnsec_password",
-        "name": "密码",
-        "type": "text",
-        "val": "",
-        "placeholder": "登录密码"
-      },
-      {
-        "id": "hcnsec_debug",
-        "name": "调试模式",
-        "type": "boolean",
-        "val": false
-      }
-    ],
-    "script": "https://raw.githubusercontent.com/mosenwoek/proxy_app/refs/heads/main/Surge/sgmodule/hcnsec_cron.js"
-  }
+      "keys": ["hcnsec_username", "hcnsec_password", "hcnsec_debug"],
+      "settings": [
+        {
+          "id": "hcnsec_username",
+          "name": "账号",
+          "type": "text",
+          "val": "",
+          "placeholder": "填写账号或邮箱"
+        },
+        {
+          "id": "hcnsec_password",
+          "name": "密码",
+          "type": "text",
+          "val": "",
+          "placeholder": "登录密码"
+        },
+        {
+          "id": "hcnsec_debug",
+          "name": "调试模式",
+          "type": "boolean",
+          "val": false
+        }
+      ],
+      "script": "https://raw.githubusercontent.com/mosenwoek/proxy_app/refs/heads/main/Surge/sgmodule/hcnsec_cron.js",
+      "author": "@mosen",
+      "repo": "https://github.com/mosenwoek/proxy_app",
+      "icons": [
+        "https://api.hcnsec.cn/favicon.ico",
+        "https://api.hcnsec.cn/favicon.ico"
+      ]
+    }
+  ]
 }
