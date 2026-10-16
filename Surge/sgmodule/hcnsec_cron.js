@@ -2,29 +2,25 @@
  * ============================================================
  *  HCNSEC 每日签到
  *  ------------------------------------------------------------------
- *  作者   : mosen（v5.4 真会话白名单 + 匿名会话兜底）
+ *  作者   : mosen（v5.5 真实 cookie 白名单对齐）
  *  更新   : 2026-10-17
  *  适用   : Loon / Surge / Stash / Quantumult X / Shadowrocket
  *
- *  v5.4 修了什么
+ *  v5.5 修了什么
  *  ------------------------------------------------------------------
- *  v5.3 用 /session/i 宽匹配当会话指纹 —— 结果 nginx 层每次响应都在
- *  下发 server_name_session（匿名会话，和登录无关），导致你刚打开
- *  网页还没登录就连弹两条"✅ 捕获成功"。
+ *  真机日志实测：api.hcnsec.cn 用的是 Bearer Token + 这几个 cookie
+ *  的混合模型，之前白名单对不上，所以捕获侧判成"匿名"不弹通知。
  *
- *  v5.4：真实登录态 cookie 走白名单；匿名会话只入罐、不通知、
- *  cron 前自检一次，避免白跑 401。
- *
- *  凭证模型（实测确认）
+ *  凭证模型（真机确认）
  *  ------------------------------------------------------------------
- *  本站是 new-api 系面板（响应头 x-oneapi-request-id），凭证分三层：
- *   · server_name_session (nginx 匿名)        每次响应刷新，签到不认
- *   · session / access_token 等（登录态）     签到就靠这个
- *   · Authorization: Bearer                    短命，会被轮换，仅做备用
+ *   · Authorization: Bearer <JWT>        签到真正用的凭证
+ *   · Cookie: new_api_has_session=1      登录标志位（固定=1）
+ *   · Cookie: new_api_refresh=<uuid>.<sig>  刷新凭证
+ *   · Cookie: server_name_session=...    nginx 匿名，签到接口不认
  * ============================================================
  */
 
-const SCRIPT_VERSION = "5.4.0";
+const SCRIPT_VERSION = "5.5.0";
 const NAME = "HCNSEC";
 const BASE_URL = "https://api.hcnsec.cn";
 const UA = "Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) " +
@@ -40,8 +36,16 @@ const K_MANUAL = "hcnsec_manual_cookie";
 const K_DIAG_REQ = "hcnsec_diag_req";
 const K_DIAG_RES = "hcnsec_diag_res";
 
-/* 真实登录态白名单 —— server_name_session 不在其中 */
-const AUTH_COOKIE_NAMES = /^(session|sessionid|access_token|accesstoken|user|user_session|username_session|new_api_session)$/i;
+/**
+ * 真实登录态白名单（基于真机日志实测）
+ * ------------------------------------------------------------
+ *   · new_api_has_session=1          登录标志位（值固定=1）
+ *   · new_api_refresh=<uuid>.<sig>   刷新凭证
+ *   · session / access_token         其他 new-api 变种
+ *
+ * server_name_session 是 nginx 负载均衡层的匿名 cookie，不算。
+ */
+const AUTH_COOKIE_NAMES = /^(session|sessionid|access_token|accesstoken|new_api_has_session|new_api_refresh|new_api_session|user|user_session|username_session)$/i;
 function isAuthCookieName(name) { return AUTH_COOKIE_NAMES.test(String(name || "")); }
 
 const isQuanX = typeof $task !== "undefined";
@@ -291,7 +295,7 @@ async function checkin() {
 		return;
 	}
 
-	// 匿名会话兜底：罐里有东西但全是 nginx 层 cookie，签到接口不认，省掉一次 401
+	// 匿名会话兜底：没任何登录态凭证（白名单 cookie / Bearer / 手动 Cookie 都没有）
 	if (!hasAuthCookie() && !store.read(K_TOKEN) && !manualCookie()) {
 		notify(NAME, "⚠️ 只拿到匿名会话",
 			"浏览器只给了 server_name_session 这类 nginx 匿名 cookie，签到接口不认。\n" +
@@ -418,7 +422,7 @@ function diagnose() {
 	else if (req && /cookie=N/.test(req) && res && /set-cookie=N/.test(res)) lines.push("→ 两侧都跑到了但都没有凭证：请先在网页上【登录一次】");
 	else if (req && /cookie=N/.test(req)) lines.push("→ 请求侧没看到 Cookie：Loon 未下发该头，或浏览器没带（未登录）");
 	else if (res && /set-cookie=N/.test(res)) lines.push("→ 响应侧没看到 Set-Cookie：本次会话未换发，登录一次即可");
-	lines.push("→ 兜底：电脑浏览器 DevTools → Application → Cookies 复制 session= 那一整条，填进插件「手动 Cookie」");
+	lines.push("→ 兜底：电脑浏览器 DevTools → Application → Cookies 复制 new_api_refresh 或 session= 那一整条，填进插件「手动 Cookie」");
 	return lines.join("\n");
 }
 
