@@ -2,29 +2,35 @@
  * ============================================================
  *  HCNSEC 每日签到
  *  ------------------------------------------------------------------
- *  作者   : mosen（v5.5 真实 cookie 白名单对齐）
+ *  作者   : mosen（v5.6 刷新凭证换 Bearer）
  *  更新   : 2026-10-17
  *  适用   : Loon / Surge / Stash / Quantumult X / Shadowrocket
  *
- *  v5.5 修了什么
+ *  v5.6 修了什么（真机日志实测）
  *  ------------------------------------------------------------------
- *  真机日志实测：api.hcnsec.cn 用的是 Bearer Token + 这几个 cookie
- *  的混合模型，之前白名单对不上，所以捕获侧判成"匿名"不弹通知。
+ *  本站是 new-api 面板，真实签到流程是：
+ *    ① 浏览器用 `new_api_refresh` cookie 调 POST /api/user/auth/refresh
+ *       → 响应体里下发新 access_token（短命 JWT）
+ *       → 响应 Set-Cookie 续签 new_api_refresh（24h）
+ *    ② 用新 token 做 Authorization: Bearer 调业务接口
  *
- *  凭证模型（真机确认）
+ *  之前版本只抓 Authorization 头 —— 只有刷新瞬间才能抓到，9 点签到
+ *  时早就过期。v5.6 签到前自己打一次 refresh，拿新鲜 token。
+ *
+ *  凭证模型
  *  ------------------------------------------------------------------
- *   · Authorization: Bearer <JWT>        签到真正用的凭证
- *   · Cookie: new_api_has_session=1      登录标志位（固定=1）
- *   · Cookie: new_api_refresh=<uuid>.<sig>  刷新凭证
- *   · Cookie: server_name_session=...    nginx 匿名，签到接口不认
+ *   · new_api_refresh=<uuid>.<sig>   刷新凭证（24h，签到用这个！）
+ *   · new_api_has_session=1          登录标志位
+ *   · Bearer <JWT>                   每次签到自己换，不长期存
+ *   · server_name_session=...        nginx 匿名，签到不认
  * ============================================================
  */
 
-const SCRIPT_VERSION = "5.5.0";
+const SCRIPT_VERSION = "5.6.0";
 const NAME = "HCNSEC";
 const BASE_URL = "https://api.hcnsec.cn";
-const UA = "Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) " +
-	"AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.5 Mobile/15E148 Safari/604.1";
+const UA = "Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) " +
+	"AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1";
 
 const K_COOKIES = "hcnsec_cookies";
 const K_TOKEN = "hcnsec_token";
@@ -38,12 +44,7 @@ const K_DIAG_RES = "hcnsec_diag_res";
 
 /**
  * 真实登录态白名单（基于真机日志实测）
- * ------------------------------------------------------------
- *   · new_api_has_session=1          登录标志位（值固定=1）
- *   · new_api_refresh=<uuid>.<sig>   刷新凭证
- *   · session / access_token         其他 new-api 变种
- *
- * server_name_session 是 nginx 负载均衡层的匿名 cookie，不算。
+ * new_api_refresh 是刷新凭证，最核心。
  */
 const AUTH_COOKIE_NAMES = /^(session|sessionid|access_token|accesstoken|new_api_has_session|new_api_refresh|new_api_session|user|user_session|username_session)$/i;
 function isAuthCookieName(name) { return AUTH_COOKIE_NAMES.test(String(name || "")); }
@@ -139,18 +140,14 @@ function mergeJar(patch) {
 	if (changed) store.write(JSON.stringify(jar), K_COOKIES);
 	return changed;
 }
-function jarToHeader() {
-	const jar = loadJar(); const keys = Object.keys(jar).sort();
-	return keys.length ? keys.map(k => k + "=" + jar[k]).join("; ") : "";
-}
 
-/** 会话指纹：只认白名单内的真实登录态 cookie */
 function sessionSignature() {
 	const jar = loadJar();
 	const keys = Object.keys(jar).filter(isAuthCookieName).sort();
 	return keys.length ? keys.map(k => k + "=" + jar[k]).join("; ") : "";
 }
 function hasAuthCookie() { return Object.keys(loadJar()).some(isAuthCookieName); }
+function hasRefreshCookie() { return !!loadJar().new_api_refresh; }
 
 function parseCookieHeader(raw) {
 	const out = {};
@@ -205,15 +202,16 @@ function cookieHeader() {
 	const jar = effectiveJar(); const keys = Object.keys(jar).sort();
 	return keys.length ? keys.map(k => k + "=" + jar[k]).join("; ") : "";
 }
-function buildHeaders() {
+function buildHeaders(explicitToken) {
 	const h = { "Content-Type": "application/json", "Accept-Language": "zh-CN,zh;q=0.9" };
-	const cookie = cookieHeader(); const token = store.read(K_TOKEN); const uid = store.read(K_USER);
+	const cookie = cookieHeader();
+	const token = explicitToken || store.read(K_TOKEN);
+	const uid = store.read(K_USER);
 	if (cookie) h.Cookie = cookie;
 	if (token) h.Authorization = "Bearer " + token;
 	if (uid) h["New-API-User"] = String(uid);
 	return h;
 }
-function hasCredentials() { return !!(cookieHeader() || store.read(K_TOKEN)); }
 
 /* 请求侧捕获 */
 function captureRequest() {
@@ -267,8 +265,6 @@ function afterCapture(changed, beforeSig, source) {
 	const sigChanged = !!afterSig && afterSig !== beforeSig;
 	if (sigChanged) store.write(afterSig, K_SIG);
 
-	// 真实登录态 cookie 才算"凭证到位"。匿名会话（server_name_session 等）
-	// 只入罐、不通知 —— 否则你一打开网页就会收到假通知。
 	if (!sigChanged) {
 		if (!afterSig) dbg("只抓到匿名 cookie，不通知");
 		else dbg("会话未变，静默更新");
@@ -277,6 +273,56 @@ function afterCapture(changed, beforeSig, source) {
 
 	notify(NAME + " · 凭证已更新", "✅ 捕获成功",
 		"可以关闭网页了，之后会每天自动签到。\n来源：" + source + "\n时间：" + stamp());
+}
+
+/**
+ * 用 new_api_refresh cookie 换取新的 access token。
+ * 这是本站的核心流程 —— Bearer token 短命，必须每次签到前刷。
+ * 返回新 token 字符串或 null。
+ */
+async function refreshAccessToken() {
+	const jar = loadJar();
+	if (!jar.new_api_refresh) { dbg("刷新：罐里没有 new_api_refresh，跳过"); return null; }
+
+	const cookieStr = Object.keys(jar).sort().map(k => k + "=" + jar[k]).join("; ");
+	try {
+		const r = await http("POST", "/api/user/auth/refresh", {
+			Cookie: cookieStr,
+			Origin: BASE_URL,
+			Referer: BASE_URL + "/",
+		}, "{}");
+
+		dbg("refresh -> HTTP " + r.status + " " + edge(r.raw, 300));
+
+		if (r.status !== 200 || !r.json) {
+			if (r.status === 401) dbg("刷新凭证已过期");
+			return null;
+		}
+
+		const d = r.json.data || r.json;
+		const token = d && (d.access_token || d.accessToken || d.token || d.jwt_token);
+		if (!token || typeof token !== "string") {
+			dbg("刷新：响应里没找到 token，payload keys=" + Object.keys(d || {}).join(","));
+			return null;
+		}
+
+		// 响应 Set-Cookie 续签 new_api_refresh，入罐
+		const setCookie = pickHeader(r.headers, "set-cookie");
+		if (setCookie) {
+			const pairs = parseSetCookie(setCookie);
+			if (Object.keys(pairs).length) {
+				mergeJar(pairs);
+				dbg("刷新：续签 cookie " + Object.keys(pairs).join(","));
+			}
+		}
+
+		store.write(token, K_TOKEN);
+		dbg("刷新成功，拿到新 token (长度 " + token.length + ")");
+		return token;
+	} catch (e) {
+		dbg("刷新异常：" + e.message);
+		return null;
+	}
 }
 
 /* 签到 */
@@ -290,22 +336,34 @@ async function checkin() {
 		return;
 	}
 
-	if (!hasCredentials()) {
-		notify(NAME, "🚫 尚未获取凭证", "请先打开 api.hcnsec.cn 并登录，再回来运行本脚本\n\n" + diagnose());
-		return;
-	}
-
-	// 匿名会话兜底：没任何登录态凭证（白名单 cookie / Bearer / 手动 Cookie 都没有）
 	if (!hasAuthCookie() && !store.read(K_TOKEN) && !manualCookie()) {
-		notify(NAME, "⚠️ 只拿到匿名会话",
-			"浏览器只给了 server_name_session 这类 nginx 匿名 cookie，签到接口不认。\n" +
-			"请在网页上【用账号密码登录一次】后再试。\n\n" + diagnose());
+		notify(NAME, "🚫 尚未获取凭证",
+			"请先打开 api.hcnsec.cn 并登录，再回来运行本脚本\n\n" + diagnose());
 		return;
 	}
 
-	const headers = buildHeaders();
-	dbg("送出 Cookie: " + edge(cookieHeader(), 120) + (manualCookie() ? "  [含手动 Cookie]" : ""));
+	// 核心：有 new_api_refresh 就先刷一次拿新鲜 token
+	let token = null;
+	if (hasRefreshCookie()) {
+		dbg("检测到 new_api_refresh，先调 refresh 换新 token");
+		token = await refreshAccessToken();
+		if (!token) {
+			clearCredentials();
+			notify(NAME, "❌ 刷新凭证已失效",
+				"24 小时内未登录，或 cookie 被服务器拉黑。\n请重新打开 api.hcnsec.cn 登录\n\n" + diagnose());
+			return;
+		}
+	} else if (!store.read(K_TOKEN) && !manualCookie()) {
+		notify(NAME, "⚠️ 缺少刷新凭证",
+			"罐里没有 new_api_refresh，需要重新登录一次让服务器下发\n\n" + diagnose());
+		return;
+	}
 
+	const headers = buildHeaders(token);
+	dbg("送出 Cookie: " + edge(cookieHeader(), 120));
+	dbg("送出 Bearer: " + (headers.Authorization ? "有(长度 " + (headers.Authorization.length - 7) + ")" : "无"));
+
+	// 计价单位
 	let quotaUnit = null;
 	try {
 		const st = await http("GET", "/api/status");
@@ -314,18 +372,18 @@ async function checkin() {
 			quotaUnit = Number(cfg.quota_per_unit);
 	} catch (_) {}
 
+	// 校验身份
 	let me;
 	try {
 		const self = await http("GET", "/api/user/self", headers);
 		dbg("self -> HTTP " + self.status + " " + edge(self.raw, 200));
 		if (self.json && self.json.success === true && self.json.data) {
 			me = self.json.data;
-		} else if (self.status === 401 || /AUTH_UNAUTHORIZED|invalid access token|无权/i.test(self.raw || "")) {
+		} else if (self.status === 401 || /AUTH_UNAUTHORIZED|access token/i.test(self.raw || "")) {
 			clearCredentials();
-			notify(NAME, "❌ 凭证已失效",
-				manualCookie()
-					? "手动 Cookie 已过期，请更新插件设置里的「手动 Cookie」"
-					: "会话已过期，请重新打开 api.hcnsec.cn 登录");
+			notify(NAME, "❌ Token 校验失败",
+				"刚拿到的 token 调 self 就 401，服务器可能临时拉黑或刷新接口响应结构变化。\n" +
+				"响应：" + edge(self.raw, 100) + "\n请重新登录试试");
 			return;
 		} else {
 			notify(NAME, "⚠️ 身份校验异常", "HTTP " + self.status + "：" + edge(self.raw, 120));
@@ -414,15 +472,9 @@ function diagnose() {
 	lines.push("请求侧：" + (req ? edge(req, 150) : "从未捕获到请求"));
 	lines.push("响应侧：" + (res ? edge(res, 150) : "从未捕获到响应"));
 	lines.push("罐内 cookie：" + (jarKeys.length ? jarKeys.join(",") : "空"));
-	lines.push("其中登录态：" + (authKeys.length ? authKeys.join(",") : "无（只有匿名会话）"));
-	lines.push("手动 Cookie：" + (manualCookie() ? "已填（" + edge(cookieHeader(), 60) + "）" : "未填"));
-
-	if (!req && !res) lines.push("→ 两条捕获规则都没跑过：检查插件是否启用、MitM 是否包含 api.hcnsec.cn");
-	else if (jarKeys.length && !authKeys.length) lines.push("→ 只抓到匿名会话（server_name_session 等 nginx 层 cookie）：请在网页上用账号密码登录一次");
-	else if (req && /cookie=N/.test(req) && res && /set-cookie=N/.test(res)) lines.push("→ 两侧都跑到了但都没有凭证：请先在网页上【登录一次】");
-	else if (req && /cookie=N/.test(req)) lines.push("→ 请求侧没看到 Cookie：Loon 未下发该头，或浏览器没带（未登录）");
-	else if (res && /set-cookie=N/.test(res)) lines.push("→ 响应侧没看到 Set-Cookie：本次会话未换发，登录一次即可");
-	lines.push("→ 兜底：电脑浏览器 DevTools → Application → Cookies 复制 new_api_refresh 或 session= 那一整条，填进插件「手动 Cookie」");
+	lines.push("其中登录态：" + (authKeys.length ? authKeys.join(",") : "无"));
+	lines.push("有刷新凭证：" + (hasRefreshCookie() ? "是" : "否 ← 关键！没它就签不了"));
+	lines.push("手动 Cookie：" + (manualCookie() ? "已填" : "未填"));
 	return lines.join("\n");
 }
 
@@ -447,14 +499,14 @@ function clock(ts) {
 }
 function stamp() {
 	const d = new Date(), p = n => String(n).padStart(2, "0");
-	return p(d.getMonth() + 1) + "-" + p(d.getDate()) + " " + p(d.getHours()) + ":" + p(d.getMinutes()) + ":" + p(d.getSeconds());
+	return p(d.getMonth() + 1) + "-" + p(d.getDate()) + " " + p(d.getMinutes()) + ":" + p(d.getSeconds());
 }
 function edge(s, n) {
 	const t = String(s || "").replace(/\s+/g, " ");
 	return t.length > n ? t.slice(0, n) + "…" : t;
 }
 
-/* 入口：Response 脚本里 $request 也在，必须先判 $response */
+/* 入口 */
 if (HAS_RESPONSE) captureResponse();
 else if (HAS_REQUEST) captureRequest();
 else checkin().catch(e => notify(NAME, "❌ 运行失败", (e && e.message) || String(e))).then(() => $done());
