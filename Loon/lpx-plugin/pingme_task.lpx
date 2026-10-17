@@ -1,0 +1,16 @@
+#!name=PingMe 签到
+#!desc=每日自动签到 + 看视频任务。账号数据存在 BoxJS 的 pingme_accounts_v1，与 Egern / Surge 通用，不用重新抓包。
+#!author=mosen
+#!homepage=https://github.com/mosenwoek/proxy_app
+#!icon=https://raw.githubusercontent.com/Aswoth/Keek/main/icon.png
+#!tag=签到,工具
+#!loon_version=3.5.1(983)
+#!date=2026-10-18
+#!type=normal
+
+[Script]
+
+# 每天 00:00 跑一次（五段 Cron：分 时 日 月 周）
+# timeout=300 是必须的：原版脚本每个视频之间有 35~43 秒随机延时，
+# 5 个视频最多要等 3 分半，超时给少了会被 Loon 半路掐断。
+cron "0 0 * * *" then script("https://raw.githubusercontent.com/mosenwoek/proxy_app/refs/heads/main/All-Tesk.js/PingMe_Task.js") with tag="PingMe 签到", timeout=300, img_url="https://raw.githubusercontent.com/Aswoth/Keek/main/icon.png"
