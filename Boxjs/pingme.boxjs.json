@@ -1,0 +1,63 @@
+{
+  "id": "aswoth.pingme",
+  "name": "PingMe 签到",
+  "author": "@Aswoth, BoxJS适配 @mosen",
+  "icon": "https://raw.githubusercontent.com/Aswoth/Keek/main/icon.png",
+  "repo": "https://github.com/Aswoth/Keek",
+  "updateTime": "2026-10-18 02:00:00",
+  "apps": [
+    {
+      "id": "aswoth.pingme.accounts",
+      "name": "PingMe 账号库",
+      "keys": [
+        "pingme_accounts_v1",
+        "pingme_daily_stats_v1",
+        "pingme_clear",
+        "pingme_debug"
+      ],
+      "settings": [
+        {
+          "id": "pingme_accounts_v1",
+          "name": "账号库（capture JSON）",
+          "val": "",
+          "type": "textarea",
+          "placeholder": "粘贴从 Egern / Loon 导出的 pingme_accounts_v1 原始 JSON",
+          "desc": "整份账号库 JSON。跨 App 共享的核心键：在任一 App 的 BoxJS 里粘贴，另一个 App 立即可用。备份/恢复也只备这一个键"
+        },
+        {
+          "id": "pingme_clear",
+          "name": "清空账号库",
+          "val": false,
+          "type": "boolean",
+          "desc": "开启后运行一次脚本会清空 pingme_accounts_v1，完成后自动复位为关闭"
+        },
+        {
+          "id": "pingme_debug",
+          "name": "调试模式",
+          "val": "false",
+          "type": "selects",
+          "items": [
+            { "key": "false", "label": "关闭" },
+            { "key": "true", "label": "开启" }
+          ],
+          "desc": "开启后脚本输出合并来源、账号数等诊断日志"
+        },
+        {
+          "id": "pingme_run_email",
+          "name": "只跑指定邮箱（留空跑全部）",
+          "val": "",
+          "type": "text",
+          "placeholder": "a@x.com,b@y.com",
+          "desc": "多个用逗号分隔；留空执行账号库里全部账号"
+        }
+      ],
+      "author": "@Aswoth, BoxJS适配 @mosen",
+      "repo": "https://github.com/Aswoth/Keek",
+      "script": "https://raw.githubusercontent.com/Aswoth/Keek/refs/heads/main/PingMe_Task.js",
+      "icons": [
+        "https://raw.githubusercontent.com/Aswoth/Keek/main/icon.png",
+        "https://raw.githubusercontent.com/Aswoth/Keek/main/icon.png"
+      ]
+    }
+  ]
+}
