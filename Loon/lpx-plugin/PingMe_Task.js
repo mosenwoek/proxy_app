@@ -359,11 +359,10 @@ function requestWithTimeout(options, timeout = 12000) {
 async function runAccount(acc, currentRunCount) {
     const accountName = getAccName(acc);
     const tag = `[${accountName}]`;
-    dbg(`账号 ${accountName}: uaSeed=${acc.uaSeed}, capture keys=${Object.keys((acc.capture && acc.capture.paramsRaw) || {}).join(",")}`);
     const ua = buildUA(acc.baseUA, acc.uaSeed);
     const fakeIp = getRandomIP();
     const headers = buildHeaders(acc.capture, ua, fakeIp);
-    dbg(`  UA=${ua}`);
+    dbg(`账号 ${accountName}: uaSeed=${acc.uaSeed}, params=${Object.keys((acc.capture && acc.capture.paramsRaw) || {}).join(",")}`);
 
     const msgs = [];
 
@@ -385,7 +384,6 @@ async function runAccount(acc, currentRunCount) {
 
     async function fetchApi(path, retries = 3) {
         const url = buildUrl(path, acc.capture);
-        dbg(`  -> ${path}`);
         for (let i = 0; i < retries; i++) {
             try {
                 return await requestWithTimeout({ url, headers });
@@ -398,47 +396,56 @@ async function runAccount(acc, currentRunCount) {
     }
 
     try {
-        // 1. 查询余额
-        const balRes = await fetchApi('queryBalanceAndBonus');
-        const balData = JSON.parse(balRes.body);
-        if (balData.retcode === 0) {
-            initialBal = balData.result.balance;
-            logMsg(`💰 初始余额：${initialBal} Coins`);
-        } else {
-            logMsg(`⚠️ 查询余额失败：${balData.retmsg || JSON.stringify(balData).slice(0, 80)}`);
-        }
-
-        // 2. 签到
         try {
-            const checkRes = await fetchApi('signIn');
-            const checkData = JSON.parse(checkRes.body);
-            if (checkData.retcode === 0) {
-                const reward = checkData.result && checkData.result.reward;
-                checkInStr = `签✓${reward ? "+" + reward : ""}`;
-                logMsg(`✅ 签到成功${reward ? `，+${reward} Coins` : ""}`);
-            } else if (checkData.retcode === 1005 || /已签/.test(checkData.retmsg || "")) {
-                checkInStr = "已签";
-                logMsg(`☑️ 今日已签到`);
+            const res = await fetchApi('queryBalanceAndBonus');
+            const d = JSON.parse(res.body);
+            if (d.retcode === 0) {
+                initialBal = d.result.balance;
+                logMsg(`💰 初始余额：${initialBal} Coins`);
             } else {
-                checkInStr = "签×";
-                logMsg(`⚠️ 签到失败：${checkData.retmsg || JSON.stringify(checkData).slice(0, 80)}`);
+                logMsg(`⚠️ 查询失败：${d.retmsg}`);
             }
         } catch (e) {
-            logMsg(`❌ 签到接口异常：${e}`);
+            logMsg(`❌ 查询异常：${e}`);
         }
 
-        // 3. 视频（最多 MAX_VIDEO 个）
-        for (let i = 0; i < MAX_VIDEO; i++) {
+        await sleep(2000 + Math.random() * 1500);
+
+        // --- 签到 ---
+        try {
+            const res = await fetchApi('checkIn');
+            const d = JSON.parse(res.body);
+            if (d.retcode === 0) {
+                logMsg(`✅ 签到：${(d.result?.bonusHint || d.retmsg || '').replace(/\n/g, ' ')}`);
+                checkInStr = "签✓";
+            } else {
+                logMsg(`⚠️ 签到返回：${d.retmsg}`);
+                const lowerMsg = (d.retmsg || '').toLowerCase();
+                if (lowerMsg.includes('已经') || lowerMsg.includes('已經') || lowerMsg.includes('已签') || lowerMsg.includes('already')) {
+                    checkInStr = "已签";
+                }
+            }
+        } catch (e) {
+            logMsg(`❌ 签到异常：${e}`);
+        }
+
+        // --- 看视频 ---
+        for (let i = 1; i <= MAX_VIDEO; i++) {
+            const randomDelay = Math.floor(Math.random() * 8000) + 35000;
+            await sleep(i === 1 ? (2000 + Math.random() * 2000) : randomDelay);
+
             try {
-                const vRes = await fetchApi('watchVideoEnd');
-                const vData = JSON.parse(vRes.body);
-                if (vData.retcode === 0 && vData.result && vData.result.balance !== undefined) {
+                const res = await fetchApi('videoBonus');
+                const d = JSON.parse(res.body);
+                if (d.retcode === 0) {
+                    logMsg(`🎬 视频${i}：+${d.result?.bonus || '?'} Coins`);
                     videoCount++;
-                    finalBal = vData.result.balance;
-                    logMsg(`📺 视频 ${i + 1}/${MAX_VIDEO} 完成，+${vData.result.reward || "?"}，余额 ${finalBal}`);
-                    await sleep(1200 + Math.floor(Math.random() * 800));
                 } else {
-                    logMsg(`📺 视频任务已结束 (${i}/${MAX_VIDEO})`);
+                    if (d.retmsg.includes('圖形驗證碼') || d.retmsg.includes('验证码')) {
+                        logMsg(`⏸ 视频${i}：触发验证码风控！本轮战略性收手，等待下次重试...`);
+                    } else {
+                        logMsg(`⏸ 视频${i}：${d.retmsg} (可能已达上限)`);
+                    }
                     break;
                 }
             } catch (e) {
