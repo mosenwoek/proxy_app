@@ -1,40 +1,54 @@
-#!name=PingMe 签到
-#!desc=每天 6 次自动签到 + 看视频任务（3/8/12/16/20/23 点）。账号数据存在 BoxJS 的 pingme_accounts_v1，与 Egern / Surge 通用，不用重新抓包。
+#!name=PingMe & WeTalk 签到
+#!desc=双站每日签到 + 视频任务，支持多账号与自定义定时。账号数据存 BoxJS，跨 App 共享，不用重复抓包。
 #!author=mosen
 #!homepage=https://github.com/mosenwoek/proxy_app
-#!icon=https://raw.githubusercontent.com/Aswoth/Keek/main/icon.png
+#!icon=https://raw.githubusercontent.com/axhani/icon/refs/heads/main/pingme&wetalk.png
 #!tag=签到,工具
 #!loon_version=3.5.1(983)
 #!date=2026-10-18
 #!type=normal
 
 # ─────────────────────────────────────────────────────────────
-#  安装前必改：把下面 cron 里的脚本地址换成本地脚本页里那条
-#  不改的话 Loon 会去拉作者的原始地址（没有 BoxJS 适配，读不到共享的账号库）
+#  安装前必改两处脚本地址（见 [Script] 段注释）
 #
-#  运行时间表：0 8,12,16,20,23,3 * * *   （共 6 次）
-#    03:00 ── 04:00   隔 5 小时
-#    08:00 ── 09:00   隔 4 小时
-#    12:00 ── 13:00   隔 4 小时
-#    16:00 ── 17:00   隔 4 小时
-#    20:00 ── 21:00   隔 3 小时   ← 最密的一档
-#    23:00 ── 00:00   隔 4 小时，然后跨夜回到 03:00
+#  使用流程
+#  ────────
+#   1. 装插件 → 打开「PingMe抓Token」开关
+#   2. 打开 PingMe App，进「我的」页面 → 自动抓一次入库 → 弹「新账号已入库」
+#   3. 关掉抓 Token 开关（不然每次开 App 都会重写一次，无害但没必要）
+#   4. 换账号：卸载 App 重装 → 登录下一个号 → 再进「我的」
+#      ⚠️ 不要点 App 内的"退出登录"，那样抓不到新号
 #
-#  为什么排 6 次而不是 1 次：
-#    Loon 挂在后台时 iOS 可能把它挂起，单次 cron 一旦错过当天就没签上。
-#    6 次是"多次兜底"——签到接口本身幂等，已签过会返回"已签到"，
-#    脚本识别后不会重复领奖励，只是多跑几遍而已。
+#  抓 Token 的实现
+#  ──────────────
+#   拦截 App 打开时那次 GET /app/queryBalanceAndBonus，
+#   URL query 里的 email / uid / deviceId 等参数 + headers 整份存进账号库。
+#   sign / signDate 每次运行重算，抓到的旧值会丢弃，所以不用管它过期。
+#
+#  为什么需要 [Mitm]
+#  抓 Token 要解密 HTTPS 才能读到 URL 参数，所以两个域名都要列入。
+#  只跑签到（不抓 Token）时可以不开 MitM。
 # ─────────────────────────────────────────────────────────────
+
+[Argument]
+pm_task    = switch,true,tag=PingMe任务,desc=关闭后不跑 PingMe 签到
+pm_capture = switch,true,tag=PingMe抓Token,desc=开启后打开 PingMe App 即自动抓取账号入库
+pm_cron    = input,"0 8,12,16,20,23,3 * * *",tag=PingMe定时,desc=五段 Cron：分 时 日 月 周
+wt_task    = switch,true,tag=WeTalk任务,desc=关闭后不跑 WeTalk 签到
+wt_capture = switch,true,tag=WeTalk抓Token,desc=开启后打开 WeTalk App 即自动抓取账号入库
+wt_cron    = input,"30 8,12,16,20,23,3 * * *",tag=WeTalk定时,desc=比 PingMe 错开 30 分钟，避免同时跑
 
 [Script]
 
-# 每天 6 次：03/08/12/16/20/23 点整（五段 Cron：分 时 日 月 周）
-# timeout=300 是必须的：原版脚本每个视频之间有 35~43 秒随机延时，
-# 5 个视频最多要等 3 分半，超时给少了会被 Loon 半路掐断。
-cron "0 8,12,16,20,23,3 * * *" then script("https://raw.githubusercontent.com/mosenwoek/proxy_app/refs/heads/main/All-Task.js/PingMe_Task.js") with tag="PingMe 签到", timeout=300, img_url="https://raw.githubusercontent.com/Aswoth/Keek/main/icon.png"
+# ── PingMe ──────────────────────────────────────────────────
+# ⚠️ 把下面的 .js 地址换成你自己仓库里那份 PingMe_Task.js
+request  if ${url} ~= /^https:\/\/api\.pingmeapp\.net\/app\/queryBalanceAndBonus/ then script("https://raw.githubusercontent.com/mosenwoek/proxy_app/refs/heads/main/All-Task.js/PingMe_Task.js") with enable=${pm_capture}, tag="PingMe·抓取账号"
+cron ${pm_cron} then script("https://raw.githubusercontent.com/mosenwoek/proxy_app/refs/heads/main/All-Task.js/PingMe_Task.js") with enable=${pm_task}, tag="PingMe·签到", timeout=600, img_url="https://raw.githubusercontent.com/axhani/icon/refs/heads/main/pingme&wetalk.png"
 
-# ─────────────────────────────────────────────────────────────
-#  不需要 [Mitm]
-#  脚本是用 $httpClient 主动去请求 api.pingmeapp.net 的，
-#  不拦截系统流量、不读 $request，所以既不装证书也不需要 MitM 域名。
-# ─────────────────────────────────────────────────────────────
+# ── WeTalk ──────────────────────────────────────────────────
+# ⚠️ 把下面的 .js 地址换成 WeTalk 脚本地址
+request  if ${url} ~= /^https:\/\/api\.wetalkapp\.com\/app\/queryBalanceAndBonus/ then script("https://raw.githubusercontent.com/mosenwoek/proxy_app/refs/heads/main/All-Task.js/WeTalk_Task.js") with enable=${wt_capture}, tag="WeTalk·抓取账号"
+cron ${wt_cron} then script("https://raw.githubusercontent.com/mosenwoek/proxy_app/refs/heads/main/All-Task.js/WeTalk_Task.js") with enable=${wt_task}, tag="WeTalk·签到", timeout=600, img_url="https://raw.githubusercontent.com/axhani/icon/refs/heads/main/pingme&wetalk.png"
+
+[Mitm]
+hostname = api.pingmeapp.net, api.wetalkapp.com
