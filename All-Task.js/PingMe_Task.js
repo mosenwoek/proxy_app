@@ -38,10 +38,12 @@ const hasTask = typeof $task !== "undefined";
 
 // $argument 优先（Loon/Egern 面板传参），其次 BoxJS 的 pingme_run_email
 function resolveTargetEmail() {
-    let arg = typeof $argument !== "undefined" && $argument ? $argument : "";
-    // BoxJS selects/text 会把参数当字符串注入，顺手兼容对象形式
-    if (arg && typeof arg === "object" && arg.email) arg = String(arg.email);
-    arg = String(arg).trim();
+    let arg = typeof $argument !== "undefined" ? $argument : "";
+    // Loon 新语法对象参数：{email} 缺值时是 null，不能 String(null) 变成 "null"
+    if (arg && typeof arg === "object") {
+        arg = typeof arg.email === "string" ? arg.email : "";
+    }
+    arg = String(arg == null ? "" : arg).trim();
     if (arg) return arg;
     return (readVal(runEmailKey) || "").trim();
 }
@@ -470,7 +472,86 @@ async function runAccount(acc, currentRunCount) {
     }
 }
 
+// ================= 抓包分支（http-request） =================
+// 参考 luckyday 的实现：拦截 App 打开时那次 queryBalanceAndBonus，
+// 把 URL query 里的业务参数 + headers 整份存成 capture。
+// 注意：URL 里的 sign/signDate 会被丢弃重签（见 buildSignedParamsRaw），
+// 所以抓到的那份过期也不影响。
+
+function parseRawQuery(url) {
+    const query = (String(url).split('?')[1] || '').split('#')[0];
+    const map = {};
+    query.split('&').forEach(pair => {
+        if (!pair) return;
+        const idx = pair.indexOf('=');
+        if (idx < 0) return;
+        map[pair.slice(0, idx)] = pair.slice(idx + 1);
+    });
+    return map;
+}
+
+function safeDecode(v) {
+    try { return decodeURIComponent(v); } catch (e) { return v; }
+}
+
+function captureAccount() {
+    try {
+        const paramsRaw = parseRawQuery($request.url);
+        const headersMap = {};
+        Object.keys($request.headers || {}).forEach(k => headersMap[k] = $request.headers[k]);
+
+        let baseUA = "";
+        Object.keys(headersMap).forEach(k => { if (k.toLowerCase() === "user-agent") baseUA = headersMap[k]; });
+
+        // paramsRaw 里是 URL 编码过的（bob%40test.com），
+        // 而 getAccName 返回 decodeURIComponent 后的值，比对前必须对齐
+        const email = safeDecode(String(paramsRaw.email || "").trim());
+        if (!email) {
+            notify(scriptName, "⚠️ 抓到请求但没有 email", "URL: " + String($request.url).slice(0, 120));
+            return;
+        }
+
+        const store = loadStore();
+
+        // 按 email 归并（与 getAccName / accFingerprint 一致），避免同一账号存两份
+        let existId = null;
+        store.order.some(id => {
+            const acc = store.accounts[id];
+            if (acc && String(getAccName(acc)).toLowerCase() === email.toLowerCase()) {
+                existId = id;
+                return true;
+            }
+            return false;
+        });
+
+        const id = existId || ("pm_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6));
+        const old = store.accounts[id] || {};
+
+        store.accounts[id] = {
+            capture: { url: $request.url, paramsRaw: paramsRaw, headers: headersMap },
+            baseUA: baseUA || old.baseUA || "",
+            uaSeed: old.uaSeed === undefined ? store.order.length : old.uaSeed,
+            alias: old.alias || "",
+        };
+        if (!existId) store.order.push(id);
+        saveStore(store);
+
+        const total = store.order.filter(x => store.accounts[x]).length;
+        notify(scriptName,
+            existId ? "🔄 账号参数已更新" : "✅ 新账号已入库",
+            `${decodeURIComponent(email)}\n当前账号总数：${total}`);
+        dbg(`capture ${existId ? "update" : "add"} ${id}`);
+    } catch (e) {
+        console.log("[ERROR] capture: " + (e && e.message));
+    }
+}
+
 // ================= 启动逻辑 =================
+// 入口分流：有 $request = 抓包分支；否则跑签到
+if (typeof $request !== "undefined") {
+    captureAccount();
+    $done({});
+} else {
 (async () => {
     // v2 新增：一次性清空开关（BoxJS pingme_clear）
     if (handleClearSwitch()) return $done();
@@ -560,3 +641,4 @@ async function runAccount(acc, currentRunCount) {
     console.log("❌ 脚本全局环境出错: " + err);
     $done();
 });
+}
