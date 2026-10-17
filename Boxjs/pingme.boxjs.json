@@ -1,19 +1,20 @@
 {
-  "id": "aswoth.pingme",
-  "name": "PingMe 签到",
-  "author": "@Aswoth, BoxJS适配 @mosen",
-  "icon": "https://raw.githubusercontent.com/Aswoth/Keek/main/icon.png",
-  "repo": "https://github.com/Aswoth/Keek",
-  "updateTime": "2026-10-18 02:00:00",
+  "id": "mosen.pingme.wetalk",
+  "name": "PingMe & WeTalk 签到",
+  "author": "@Aswoth, @luckyday, BoxJS适配 @mosen",
+  "icon": "https://raw.githubusercontent.com/axhani/icon/refs/heads/main/pingme&wetalk.png",
+  "repo": "https://github.com/mosenwoek/proxy_app",
+  "updateTime": "2026-10-18 04:00:00",
   "apps": [
     {
-      "id": "aswoth.pingme.accounts",
-      "name": "PingMe 账号库",
+      "id": "mosen.pingme",
+      "name": "PingMe",
       "keys": [
         "pingme_accounts_v1",
         "pingme_daily_stats_v1",
         "pingme_clear",
-        "pingme_debug"
+        "pingme_debug",
+        "pingme_run_email"
       ],
       "settings": [
         {
@@ -21,8 +22,8 @@
           "name": "账号库（capture JSON）",
           "val": "",
           "type": "textarea",
-          "placeholder": "粘贴从 Egern / Loon 导出的 pingme_accounts_v1 原始 JSON",
-          "desc": "整份账号库 JSON。跨 App 共享的核心键：在任一 App 的 BoxJS 里粘贴，另一个 App 立即可用。备份/恢复也只备这一个键"
+          "placeholder": "粘贴从 Egern / Loon / Surge 导出的 pingme_accounts_v1 原始 JSON",
+          "desc": "整份账号库 JSON。跨 App 共享的核心键：任一 App 的 BoxJS 里粘贴，另一个 App 立即可用。备份/恢复也只备这一个键"
         },
         {
           "id": "pingme_clear",
@@ -30,6 +31,14 @@
           "val": false,
           "type": "boolean",
           "desc": "开启后运行一次脚本会清空 pingme_accounts_v1，完成后自动复位为关闭"
+        },
+        {
+          "id": "pingme_run_email",
+          "name": "只跑指定邮箱（留空跑全部）",
+          "val": "",
+          "type": "text",
+          "placeholder": "a@x.com,b@y.com",
+          "desc": "多个用逗号分隔；留空执行账号库里全部账号。插件里的邮箱参数优先级更高"
         },
         {
           "id": "pingme_debug",
@@ -40,23 +49,60 @@
             { "key": "false", "label": "关闭" },
             { "key": "true", "label": "开启" }
           ],
-          "desc": "开启后脚本输出合并来源、账号数等诊断日志"
-        },
-        {
-          "id": "pingme_run_email",
-          "name": "只跑指定邮箱（留空跑全部）",
-          "val": "",
-          "type": "text",
-          "placeholder": "a@x.com,b@y.com",
-          "desc": "多个用逗号分隔；留空执行账号库里全部账号"
+          "desc": "开启后脚本输出合并来源、账号数、UA、请求路径等诊断日志"
         }
       ],
       "author": "@Aswoth, BoxJS适配 @mosen",
-      "repo": "https://github.com/Aswoth/Keek",
-      "script": "https://raw.githubusercontent.com/Aswoth/Keek/refs/heads/main/PingMe_Task.js",
+      "repo": "https://github.com/mosenwoek/proxy_app",
+      "script": "https://raw.githubusercontent.com/mosenwoek/proxy_app/refs/heads/main/Surge/sgmodule/PingMe_Task.js",
       "icons": [
-        "https://raw.githubusercontent.com/Aswoth/Keek/main/icon.png",
-        "https://raw.githubusercontent.com/Aswoth/Keek/main/icon.png"
+        "https://raw.githubusercontent.com/axhani/icon/refs/heads/main/pingme&wetalk.png",
+        "https://raw.githubusercontent.com/axhani/icon/refs/heads/main/pingme&wetalk.png"
+      ]
+    },
+    {
+      "id": "mosen.wetalk",
+      "name": "WeTalk",
+      "keys": [
+        "wetalk_accounts_v1",
+        "wetalk_daily_stats_v1",
+        "wetalk_clear",
+        "wetalk_debug"
+      ],
+      "settings": [
+        {
+          "id": "wetalk_accounts_v1",
+          "name": "账号库（capture JSON）",
+          "val": "",
+          "type": "textarea",
+          "placeholder": "粘贴从任一 App 导出的 wetalk_accounts_v1 原始 JSON",
+          "desc": "WeTalk 的账号库，结构与 PingMe 相同（capture.paramsRaw + capture.headers + baseUA + uaSeed）。和 PingMe 一样可以跨 App 粘贴共享"
+        },
+        {
+          "id": "wetalk_clear",
+          "name": "清空账号库",
+          "val": false,
+          "type": "boolean",
+          "desc": "开启后运行一次脚本会清空 wetalk_accounts_v1，完成后自动复位为关闭"
+        },
+        {
+          "id": "wetalk_debug",
+          "name": "调试模式",
+          "val": "false",
+          "type": "selects",
+          "items": [
+            { "key": "false", "label": "关闭" },
+            { "key": "true", "label": "开启" }
+          ],
+          "desc": "开启后输出详细日志"
+        }
+      ],
+      "author": "@luckyday",
+      "repo": "https://github.com/mosenwoek/proxy_app",
+      "script": "https://raw.githubusercontent.com/mosenwoek/proxy_app/refs/heads/main/Surge/sgmodule/WeTalk_Task.js",
+      "icons": [
+        "https://raw.githubusercontent.com/axhani/icon/refs/heads/main/pingme&wetalk.png",
+        "https://raw.githubusercontent.com/axhani/icon/refs/heads/main/pingme&wetalk.png"
       ]
     }
   ]
