@@ -2,7 +2,7 @@
   "id": "mosen.nodeseek",
   "name": "NodeSeek 签到",
   "author": "mosen",
-  "icon": "https://www.nodeseek.com/static/image/favicon.ico",
+  "icon": "https://raw.githubusercontent.com/mosenwoek/icons/refs/heads/main/NodeSeek.png",
   "repo": "https://github.com/mosenwoek/proxy_app",
   "updateTime": "2026-10-18 21:20:00",
   "apps": [
@@ -74,8 +74,8 @@
       "repo": "https://github.com/mosenwoek/proxy_app",
       "script": "https://raw.githubusercontent.com/mosenwoek/proxy_app/refs/heads/main/All-Task.js/NodeSeek_Task.js",
       "icons": [
-        "https://www.nodeseek.com/static/image/favicon.ico",
-        "https://www.nodeseek.com/static/image/favicon.ico"
+        "https://raw.githubusercontent.com/mosenwoek/icons/refs/heads/main/NodeSeek.png",
+        "https://raw.githubusercontent.com/mosenwoek/icons/refs/heads/main/NodeSeek.png"
       ]
     }
   ]
