@@ -1,0 +1,54 @@
+#!name=PingMe & WeTalk 签到
+#!desc=双站每日签到 + 视频任务，支持多账号与自定义定时。账号数据存 BoxJS，跨 App 共享，不用重复抓包。
+#!author=mosen
+#!homepage=https://github.com/mosenwoek/proxy_app
+#!icon=https://raw.githubusercontent.com/axhani/icon/refs/heads/main/pingme&wetalk.png
+#!tag=签到,工具
+#!loon_version=3.5.1(983)
+#!date=2026-10-18
+#!type=normal
+
+# ─────────────────────────────────────────────────────────────
+#  安装前必改两处脚本地址（见 [Script] 段注释）
+#
+#  使用流程
+#  ────────
+#   1. 装插件 → 打开「PingMe抓Token」开关
+#   2. 打开 PingMe App，进「我的」页面 → 自动抓一次入库 → 弹「新账号已入库」
+#   3. 关掉抓 Token 开关（不然每次开 App 都会重写一次，无害但没必要）
+#   4. 换账号：卸载 App 重装 → 登录下一个号 → 再进「我的」
+#      ⚠️ 不要点 App 内的"退出登录"，那样抓不到新号
+#
+#  抓 Token 的实现
+#  ──────────────
+#   拦截 App 打开时那次 GET /app/queryBalanceAndBonus，
+#   URL query 里的 email / uid / deviceId 等参数 + headers 整份存进账号库。
+#   sign / signDate 每次运行重算，抓到的旧值会丢弃，所以不用管它过期。
+#
+#  为什么需要 [Mitm]
+#  抓 Token 要解密 HTTPS 才能读到 URL 参数，所以两个域名都要列入。
+#  只跑签到（不抓 Token）时可以不开 MitM。
+# ─────────────────────────────────────────────────────────────
+
+[Argument]
+pm_task    = switch,true,tag=PingMe任务,desc=关闭后不跑 PingMe 签到
+pm_capture = switch,true,tag=PingMe抓Token,desc=开启后打开 PingMe App 即自动抓取账号入库
+pm_cron    = input,"0 8,12,16,20,23,3 * * *",tag=PingMe定时,desc=五段 Cron：分 时 日 月 周
+wt_task    = switch,true,tag=WeTalk任务,desc=关闭后不跑 WeTalk 签到
+wt_capture = switch,true,tag=WeTalk抓Token,desc=开启后打开 WeTalk App 即自动抓取账号入库
+wt_cron    = input,"30 8,12,16,20,23,3 * * *",tag=WeTalk定时,desc=比 PingMe 错开 30 分钟，避免同时跑
+
+[Script]
+
+# ── PingMe ──────────────────────────────────────────────────
+# ⚠️ 把下面的 .js 地址换成你自己仓库里那份 PingMe_Task.js
+request  if ${url} ~= /^https:\/\/api\.pingmeapp\.net\/app\/queryBalanceAndBonus/ then script("https://raw.githubusercontent.com/mosenwoek/proxy_app/refs/heads/main/All-Task.js/PingMe_Task.js") with enable=${pm_capture}, tag="PingMe·抓取账号"
+cron ${pm_cron} then script("https://raw.githubusercontent.com/mosenwoek/proxy_app/refs/heads/main/All-Task.js/PingMe_Task.js") with enable=${pm_task}, tag="PingMe·签到", timeout=600, img_url="https://raw.githubusercontent.com/axhani/icon/refs/heads/main/pingme&wetalk.png"
+
+# ── WeTalk ──────────────────────────────────────────────────
+# ⚠️ 把下面的 .js 地址换成 WeTalk 脚本地址
+request  if ${url} ~= /^https:\/\/api\.wetalkapp\.com\/app\/queryBalanceAndBonus/ then script("https://raw.githubusercontent.com/mosenwoek/proxy_app/refs/heads/main/All-Task.js/WeTalk_Task.js") with enable=${wt_capture}, tag="WeTalk·抓取账号"
+cron ${wt_cron} then script("https://raw.githubusercontent.com/mosenwoek/proxy_app/refs/heads/main/All-Task.js/WeTalk_Task.js") with enable=${wt_task}, tag="WeTalk·签到", timeout=600, img_url="https://raw.githubusercontent.com/axhani/icon/refs/heads/main/pingme&wetalk.png"
+
+[Mitm]
+hostname = api.pingmeapp.net, api.wetalkapp.com
