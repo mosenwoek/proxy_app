@@ -122,6 +122,7 @@
       "name": "AgentRouter",
       "keys": [
         "agentrouter_accounts_v1",
+        "agentrouter_sync",
         "agentrouter_username",
         "agentrouter_password",
         "agentrouter_clear",
@@ -151,6 +152,13 @@
           "type": "text",
           "placeholder": "网站登录密码",
           "desc": "单独填写密码，首尾空格会保留；不要分享含账号密码的 BoxJS 备份"
+        },
+        {
+          "id": "agentrouter_sync",
+          "name": "从 Loon 插件同步进来",
+          "val": false,
+          "type": "boolean",
+          "desc": "开启后运行一次脚本，会把 Loon 插件设置里填的账号并入本账号库（同名覆盖），完成后自动关闭。用于从插件配置迁移到 BoxJS"
         },
         {
           "id": "agentrouter_clear",
