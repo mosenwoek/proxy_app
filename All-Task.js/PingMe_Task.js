@@ -2,6 +2,7 @@
  * PingMe_Task.js（跨 App 共享版 v2）
  * ------------------------------------------------------------------
  * 原版：Aswoth/Keek（Egern 用）
+ * 维护：mosen[https://github.com/mosenwoek],moyan[https://t.me/tgxiaoxizf_bot]
  * 本版：在原逻辑之上加一层「BoxJS 数据源」，让 Egern / Loon / Surge / QX
  *      共享同一份 pingme_accounts_v1，迁 App 不用重抓 cookie。
  *
