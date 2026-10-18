@@ -1,6 +1,6 @@
-#!name=raw-inline-preview
-#!desc=让浏览器直接渲染 raw 链接的插件文件，不触发下载。感谢老中医提供的思路 @dcpeng
-#!author=mosen
+#!name=预览loon插件qx脚本
+#!desc=让浏览器直接渲染 raw 链接的lpx,plugin,snippet文件，不触发下载。感谢老中医提供的思路 @dcpeng
+#!author=@mosen[https://github.com/mosenwoek], @moyan[https://t.me/tgxiaoxizf_bot]
 #!homepage=https://github.com/mosenwoek/proxy_app
 #!icon=https://raw.githubusercontent.com/mosenwoek/icons/refs/heads/main/BoxJS.png
 #!tag=工具
