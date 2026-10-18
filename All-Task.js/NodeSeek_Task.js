@@ -227,7 +227,14 @@ async function fetchInfo(acc) {
   });
   const detail = (res.json && (res.json.detail || res.json.data)) || null;
   if (!detail) return null;
-  return { coin: detail.coin, name: detail.member_name || acc.memberName };
+  return {
+    coin: detail.coin,
+    stardust: detail.stardust,
+    rank: detail.rank,
+    posts: detail.nPost,
+    comments: detail.nComment,
+    name: detail.member_name || acc.memberName,
+  };
 }
 
 async function run() {
@@ -248,18 +255,60 @@ async function run() {
 
   log(`📋 共 ${accounts.length} 个账号`);
   const lines = [];
+  let totalGain = 0;
+  let lastBalance = null;
+
   for (const acc of accounts) {
     try {
-      if (!CFG.checkin) { log(`- ${acc.memberName}: 签到开关关闭，跳过`); continue; }
+      if (!CFG.checkin) {
+        const info = await fetchInfo(acc).catch(() => null);
+        if (info && info.coin !== undefined) {
+          const line = `⏸ ${acc.memberName}: 签到开关已关闭，仅查询`;
+          const detail = `   余额 ${info.coin} 鸡腿 · 等级 Lv${info.rank ?? '-'}`;
+          log(line); log(detail);
+          lines.push(line, detail);
+          lastBalance = info.coin;
+        } else {
+          log(`- ${acc.memberName}: 签到开关关闭，跳过`);
+        }
+        continue;
+      }
+
+      // 签到前余额
+      const before = await fetchInfo(acc).catch(() => null);
+      const coinBefore = before && before.coin !== undefined ? before.coin : null;
+
       const r = await checkinAccount(acc);
-      let extra = '';
-      try {
-        const info = await fetchInfo(acc);
-        if (info && info.coin !== undefined) extra = `（余额 ${info.coin}）`;
-      } catch (e) { debug('查询余额失败', e.message); }
-      const line = `${r.ok ? (r.already ? '☑️' : '🍗') : '❌'} ${acc.memberName}: ${r.msg}${extra}`;
-      log(line);
-      lines.push(line);
+
+      // 签到后余额
+      const after = await fetchInfo(acc).catch(() => null);
+      const coinAfter = after && after.coin !== undefined ? after.coin : null;
+      if (coinAfter !== null) lastBalance = coinAfter;
+
+      const delta = (coinBefore !== null && coinAfter !== null) ? coinAfter - coinBefore : (r.gain || 0);
+      if (delta > 0) totalGain += delta;
+
+      let line, detail;
+      if (!r.ok) {
+        line = `❌ ${acc.memberName}: ${r.msg}`;
+        detail = coinAfter !== null ? `   余额 ${coinAfter} 鸡腿` : '';
+      } else if (r.already) {
+        line = `☑️ ${acc.memberName}: 今日已签到过了，明日再来哦`;
+        detail = coinAfter !== null
+          ? `   余额 ${coinAfter} 鸡腿 · 等级 Lv${after.rank ?? '-'} · 明日再来哦`
+          : '';
+      } else {
+        const gainText = delta > 0 ? `+${delta}` : (r.gain ? `+${r.gain}` : '已到账');
+        line = `🍗 ${acc.memberName}: 签到成功 ${gainText} 鸡腿`;
+        const parts = [];
+        if (coinBefore !== null && coinAfter !== null) parts.push(`余额 ${coinBefore} → ${coinAfter}（${delta >= 0 ? '+' : ''}${delta}）`);
+        else if (coinAfter !== null) parts.push(`余额 ${coinAfter} 鸡腿`);
+        if (after && after.rank !== undefined) parts.push(`等级 Lv${after.rank}`);
+        if (after && after.posts !== undefined) parts.push(`帖 ${after.posts} · 评 ${after.comments}`);
+        detail = parts.length ? `   ${parts.join(' · ')}` : '';
+      }
+      log(line); if (detail) log(detail);
+      lines.push(line); if (detail) lines.push(detail);
     } catch (e) {
       const line = `❌ ${acc.memberName}: ${e.message}`;
       log(line);
@@ -268,7 +317,22 @@ async function run() {
   }
 
   if (CFG.notify && lines.length) {
-    const title = lines.every(l => l.startsWith('❌')) ? 'NodeSeek 签到失败' : 'NodeSeek 签到完成';
+    const failed = lines.filter(l => l.startsWith('❌')).length;
+    const okCount = lines.filter(l => l.startsWith('🍗')).length;
+    const alreadyCount = lines.filter(l => l.startsWith('☑️')).length;
+    let title;
+    if (failed && !okCount && !alreadyCount) title = '❌ NodeSeek 签到失败';
+    else if (okCount) title = `🍗 NodeSeek 签到成功 +${totalGain} 鸡腿`;
+    else if (alreadyCount) title = '☑️ NodeSeek 今日已签到';
+    else title = 'NodeSeek 运行完成';
+
+    const footer = [];
+    if (okCount) footer.push(`成功 ${okCount}`);
+    if (alreadyCount) footer.push(`已签 ${alreadyCount}`);
+    if (failed) footer.push(`失败 ${failed}`);
+    const summary = `合计 +${totalGain} 鸡腿${lastBalance !== null ? ` · 当前余额 ${lastBalance}` : ''}（${footer.join(' / ')}）`;
+    lines.push('', summary);
+
     notifyMsg(title, lines.join('\n'));
   }
 }
