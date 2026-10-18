@@ -105,6 +105,8 @@ function timeoutValue() {
 
 function request({ url, method = 'GET', headers = {}, body = null }) {
   const opt = { url, headers, timeout: timeoutValue() };
+  // Loon 走 h2，nodeseek 的 WAF 对 h1 无 UA 请求会 403
+  if (isLoon) opt.alpn = 'h2';
   if (body !== null && body !== undefined) opt.body = body;
   const timeoutMs = (isQuanX || isLoon) ? opt.timeout : opt.timeout * 1000;
 
@@ -134,8 +136,10 @@ function request({ url, method = 'GET', headers = {}, body = null }) {
 
 function apiHeaders(cookie) {
   return {
+    'user-agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1',
     'accept': '*/*',
     'accept-language': 'zh-CN,zh-Hans;q=0.9',
+    'accept-encoding': 'gzip, deflate, br',
     'origin': BASE,
     'referer': BASE + '/board',
     'sec-fetch-dest': 'empty',
@@ -202,7 +206,10 @@ async function checkinAccount(acc) {
 
   const data = res.json || {};
   if (res.status === 404) return { ok: false, msg: 'Cookie 失效，请重新抓取' };
-  if (res.status === 401 || res.status === 403) return { ok: false, msg: `鉴权失败(${res.status})` };
+  if (res.status === 401 || res.status === 403) {
+    log(`[${acc.memberName}][403诊断] body 前 300 字:`, String(res.body || '').slice(0, 300));
+    return { ok: false, msg: `鉴权失败(${res.status})` };
+  }
 
   const message = data.message || data.msg || `HTTP ${res.status}`;
   const gain = data.gain ?? data.coin ?? data.reward ?? 0;
