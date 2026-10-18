@@ -4,7 +4,7 @@
   "author": "@Aswoth, @luckyday, BoxJS适配 @mosen",
   "icon": "https://raw.githubusercontent.com/mosenwoek/icons/refs/heads/main/v2_square.png?v=1792312479",
   "repo": "https://github.com/mosenwoek/proxy_app",
-  "updateTime": "2026-10-18 16:20:00",
+  "updateTime": "2026-10-18 21:25:00",
   "apps": [
     {
       "id": "mosen.pingme",
@@ -195,6 +195,78 @@
         "https://raw.githubusercontent.com/mosenwoek/icons/refs/heads/main/AgentRouter.png"
       ],
       "icon": "https://raw.githubusercontent.com/mosenwoek/icons/refs/heads/main/AgentRouter.png"
+    },
+    {
+      "id": "mosen.nodeseek",
+      "name": "NodeSeek",
+      "keys": [
+        "nodeseek_accounts_v1",
+        "nodeseek_checkin",
+        "nodeseek_capture",
+        "nodeseek_random",
+        "nodeseek_notify",
+        "nodeseek_debug",
+        "nodeseek_clear"
+      ],
+      "settings": [
+        {
+          "id": "nodeseek_accounts_v1",
+          "name": "账号库（自动抓取，可手动粘贴）",
+          "val": "",
+          "type": "textarea",
+          "placeholder": "[{\"memberId\":\"12345\",\"memberName\":\"你的昵称\",\"cookie\":\"session=xxx\"}]",
+          "desc": "抓 Cookie 时脚本自动写入。跨 App 共享：任一 App 的 BoxJS 里粘这一串，另一个立即生效。备份也只备这一个键"
+        },
+        {
+          "id": "nodeseek_checkin",
+          "name": "每日签到",
+          "val": true,
+          "type": "boolean",
+          "desc": "关闭后定时任务只做余额查询，不执行签到"
+        },
+        {
+          "id": "nodeseek_capture",
+          "name": "抓 Cookie",
+          "val": false,
+          "type": "boolean",
+          "desc": "开启后浏览 nodeseek.com 点自己头像，自动把 Cookie 存进账号库。抓完请关掉"
+        },
+        {
+          "id": "nodeseek_random",
+          "name": "随机鸡腿",
+          "val": false,
+          "type": "boolean",
+          "desc": "关闭=固定领 5 个鸡腿；开启=随机发放（原版默认固定，更稳）"
+        },
+        {
+          "id": "nodeseek_notify",
+          "name": "运行通知",
+          "val": true,
+          "type": "boolean",
+          "desc": "签到完成后推送系统通知，含每个账号的结果与余额"
+        },
+        {
+          "id": "nodeseek_debug",
+          "name": "调试模式",
+          "val": false,
+          "type": "boolean",
+          "desc": "输出请求状态、余额查询、账号解析等详细日志"
+        },
+        {
+          "id": "nodeseek_clear",
+          "name": "清空账号库",
+          "val": false,
+          "type": "boolean",
+          "desc": "开启后运行一次脚本会清空 nodeseek_accounts_v1，完成后自动复位为关闭"
+        }
+      ],
+      "author": "mosen",
+      "repo": "https://github.com/mosenwoek/proxy_app",
+      "script": "https://raw.githubusercontent.com/mosenwoek/proxy_app/refs/heads/main/All-Task.js/NodeSeek_Task.js",
+      "icons": [
+        "https://www.nodeseek.com/static/image/favicon.ico",
+        "https://www.nodeseek.com/static/image/favicon.ico"
+      ]
     }
   ]
 }
