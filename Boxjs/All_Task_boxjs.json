@@ -62,9 +62,10 @@
       "repo": "https://github.com/mosenwoek/proxy_app",
       "script": "https://raw.githubusercontent.com/mosenwoek/proxy_app/refs/heads/main/All-Task.js/PingMe_Task.js",
       "icons": [
-        "https://raw.githubusercontent.com/axhani/icon/refs/heads/main/pingme&wetalk.png",
-        "https://raw.githubusercontent.com/axhani/icon/refs/heads/main/pingme&wetalk.png"
-      ]
+        "https://raw.githubusercontent.com/mosenwoek/proxy_app/refs/heads/main/All-Task.js/icons/PingMe.png",
+        "https://raw.githubusercontent.com/mosenwoek/proxy_app/refs/heads/main/All-Task.js/icons/PingMe.png"
+      ],
+      "icon": "https://raw.githubusercontent.com/mosenwoek/proxy_app/refs/heads/main/All-Task.js/icons/PingMe.png"
     },
     {
       "id": "mosen.wetalk",
@@ -113,9 +114,10 @@
       "repo": "https://github.com/mosenwoek/proxy_app",
       "script": "https://raw.githubusercontent.com/mosenwoek/proxy_app/refs/heads/main/All-Task.js/WeTalk_Task.js",
       "icons": [
-        "https://raw.githubusercontent.com/axhani/icon/refs/heads/main/pingme&wetalk.png",
-        "https://raw.githubusercontent.com/axhani/icon/refs/heads/main/pingme&wetalk.png"
-      ]
+        "https://raw.githubusercontent.com/mosenwoek/proxy_app/refs/heads/main/All-Task.js/icons/WeTalk.png",
+        "https://raw.githubusercontent.com/mosenwoek/proxy_app/refs/heads/main/All-Task.js/icons/WeTalk.png"
+      ],
+      "icon": "https://raw.githubusercontent.com/mosenwoek/proxy_app/refs/heads/main/All-Task.js/icons/WeTalk.png"
     },
     {
       "id": "mosen.agentrouter",
@@ -189,9 +191,10 @@
       "repo": "https://github.com/mosenwoek/proxy_app",
       "script": "https://raw.githubusercontent.com/mosenwoek/proxy_app/refs/heads/main/All-Task.js/AgentRouter_Task.js",
       "icons": [
-        "https://raw.githubusercontent.com/mosenwoek/proxy_app/refs/heads/main/All-Task.js/agentrouter/icon.png",
-        "https://raw.githubusercontent.com/mosenwoek/proxy_app/refs/heads/main/All-Task.js/agentrouter/icon.png"
-      ]
+        "https://raw.githubusercontent.com/mosenwoek/proxy_app/refs/heads/main/All-Task.js/icons/AgentRouter.png",
+        "https://raw.githubusercontent.com/mosenwoek/proxy_app/refs/heads/main/All-Task.js/icons/AgentRouter.png"
+      ],
+      "icon": "https://raw.githubusercontent.com/mosenwoek/proxy_app/refs/heads/main/All-Task.js/icons/AgentRouter.png"
     }
   ]
 }
