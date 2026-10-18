@@ -2,7 +2,7 @@
 #!desc=双站每日签到 + 视频任务，支持多账号与自定义定时。账号数据存 BoxJS，跨 App 共享，不用重复抓包。
 #!author=mosen
 #!homepage=https://github.com/mosenwoek/proxy_app
-#!icon=https://raw.githubusercontent.com/axhani/icon/refs/heads/main/pingme&wetalk.png
+#!icon=https://raw.githubusercontent.com/mosenwoek/icons/refs/heads/main/PingMe.png
 #!tag=签到,工具
 #!loon_version=3.5.1(983)
 #!date=2026-10-18
@@ -43,12 +43,12 @@ wt_cron    = input,"30 8,12,16,20,23,3 * * *",tag=WeTalk定时,desc=比 PingMe �
 # ── PingMe ──────────────────────────────────────────────────
 # ⚠️ 把下面的 .js 地址换成你自己仓库里那份 PingMe_Task.js
 request  if ${url} ~= /^https:\/\/api\.pingmeapp\.net\/app\/queryBalanceAndBonus/ then script("https://raw.githubusercontent.com/mosenwoek/proxy_app/refs/heads/main/All-Task.js/PingMe_Task.js") with enable=${pm_capture}, tag="PingMe·抓取账号"
-cron ${pm_cron} then script("https://raw.githubusercontent.com/mosenwoek/proxy_app/refs/heads/main/All-Task.js/PingMe_Task.js") with enable=${pm_task}, tag="PingMe·签到", timeout=600, img_url="https://raw.githubusercontent.com/axhani/icon/refs/heads/main/pingme&wetalk.png"
+cron ${pm_cron} then script("https://raw.githubusercontent.com/mosenwoek/proxy_app/refs/heads/main/All-Task.js/PingMe_Task.js") with enable=${pm_task}, tag="PingMe·签到", timeout=600, img_url="https://raw.githubusercontent.com/mosenwoek/icons/refs/heads/main/PingMe.png"
 
 # ── WeTalk ──────────────────────────────────────────────────
 # ⚠️ 把下面的 .js 地址换成 WeTalk 脚本地址
 request  if ${url} ~= /^https:\/\/api\.wetalkapp\.com\/app\/queryBalanceAndBonus/ then script("https://raw.githubusercontent.com/mosenwoek/proxy_app/refs/heads/main/All-Task.js/WeTalk_Task.js") with enable=${wt_capture}, tag="WeTalk·抓取账号"
-cron ${wt_cron} then script("https://raw.githubusercontent.com/mosenwoek/proxy_app/refs/heads/main/All-Task.js/WeTalk_Task.js") with enable=${wt_task}, tag="WeTalk·签到", timeout=600, img_url="https://raw.githubusercontent.com/axhani/icon/refs/heads/main/pingme&wetalk.png"
+cron ${wt_cron} then script("https://raw.githubusercontent.com/mosenwoek/proxy_app/refs/heads/main/All-Task.js/WeTalk_Task.js") with enable=${wt_task}, tag="WeTalk·签到", timeout=600, img_url="https://raw.githubusercontent.com/mosenwoek/icons/refs/heads/main/WeTalk.png"
 
 [Mitm]
 hostname = api.pingmeapp.net, api.wetalkapp.com
