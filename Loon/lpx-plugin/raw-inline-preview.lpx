@@ -1,0 +1,16 @@
+#!name=raw-inline-preview
+#!desc=让浏览器直接渲染 raw 链接的插件文件，不触发下载。感谢老中医提供的思路 @dcpeng
+#!author=mosen
+#!homepage=https://github.com/mosenwoek/proxy_app
+#!icon=https://raw.githubusercontent.com/mosenwoek/icons/refs/heads/main/BoxJS.png
+#!tag=工具
+#!system=ios
+#!loon_version=3.5.1
+#!date=2026-10-18
+
+[Rewrite]
+response if ${url} ~= /^https:\/\/raw\.githubusercontent\.com\//i then response.header.set("Content-Disposition", "inline")
+response if ${url} ~= /^https:\/\/gist\.githubusercontent\.com\//i then response.header.set("Content-Disposition", "inline")
+
+[MitM]
+hostname = raw.githubusercontent.com, gist.githubusercontent.com
