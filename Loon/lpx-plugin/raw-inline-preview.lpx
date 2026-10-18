@@ -14,5 +14,5 @@ response if ${url} ~= /^https:\/\/raw\.githubusercontent\.com\/.*\.snippet(\?.*)
 response if ${url} ~= /^https:\/\/raw\.githubusercontent\.com\//i then response.header.set("Content-Disposition", "inline; filename=\"plugin.txt\"")
 response if ${url} ~= /^https:\/\/gist\.githubusercontent\.com\//i then response.header.set("Content-Disposition", "inline; filename=\"plugin.txt\"")
 
-[MitM]
-hostname = raw.githubusercontent.com, gist.githubusercontent.com
+#[MitM]
+#hostname = raw.githubusercontent.com, gist.githubusercontent.com
