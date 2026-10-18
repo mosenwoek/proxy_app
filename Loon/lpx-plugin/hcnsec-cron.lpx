@@ -1,6 +1,6 @@
 #!name=HCNSEC 签到
 #!desc=双向抓取网页登录凭证（请求 Cookie + 响应 Set-Cookie），每日 9 点自动签到。首次使用请在浏览器打开 api.hcnsec.cn 并登录一次。
-#!author=mosen
+#!author=mosen[https://github.com/mosenwoek],moyan[https://t.me/tgxiaoxizf_bot]
 #!homepage=https://github.com/mosenwoek/proxy_app
 #!icon=https://api.hcnsec.cn/favicon.ico
 #!tag=签到,工具
