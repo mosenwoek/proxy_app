@@ -1,4 +1,4 @@
-#!name=raw-inline-preview
+#!name=增强预览插件脚本
 #!desc=让浏览器直接渲染 raw/gist 链接的lpx plugin snippet 文件，不触发下载。感谢老中医提供的思路 @dcpeng
 #!author=mosen[https://github.com/mosenwoek],moyan[https://t.me/tgxiaoxizf_bot]
 #!homepage=https://github.com/mosenwoek/proxy_app
