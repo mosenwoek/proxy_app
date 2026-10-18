@@ -2,7 +2,7 @@
  * ============================================================
  *  HCNSEC 每日签到
  *  ------------------------------------------------------------------
- *  作者   : mosen（v5.6 刷新凭证换 Bearer）
+ *  作者   : mosen[https://github.com/mosenwoek],moyan[https://t.me/tgxiaoxizf_bot]（v5.6 刷新凭证换 Bearer）
  *  更新   : 2026-10-17
  *  适用   : Loon / Surge / Stash / Quantumult X / Shadowrocket
  *
@@ -499,7 +499,7 @@ function clock(ts) {
 }
 function stamp() {
 	const d = new Date(), p = n => String(n).padStart(2, "0");
-	return p(d.getMonth() + 1) + "-" + p(d.getDate()) + " " + p(d.getMinutes()) + ":" + p(d.getSeconds());
+	return p(d.getMonth() + 1) + "-" + p(d.getDate()) + " " + p(d.getHours()) + ":" + p(d.getMinutes()) + ":" + p(d.getSeconds());
 }
 function edge(s, n) {
 	const t = String(s || "").replace(/\s+/g, " ");
