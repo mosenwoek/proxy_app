@@ -205,17 +205,15 @@ async function checkinAccount(acc) {
   });
 
   const data = res.json || {};
-  if (res.status === 404) return { ok: false, msg: 'Cookie 失效，请重新抓取' };
-  if (res.status === 401 || res.status === 403) {
-    log(`[${acc.memberName}][403诊断] body 前 300 字:`, String(res.body || '').slice(0, 300));
-    return { ok: false, msg: `鉴权失败(${res.status})` };
-  }
-
+  // nodeseek 业务错误也走 HTTP 500（如「今日已签到」），以响应体为准
   const message = data.message || data.msg || `HTTP ${res.status}`;
-  const gain = data.gain ?? data.coin ?? data.reward ?? 0;
+  if (/需要登录|未登录|请先登录/.test(message) || res.status === 404) {
+    return { ok: false, msg: 'Cookie 失效，请重新抓取' };
+  }
   const already = /已签到|已领取|重复/.test(message);
+  const gain = data.gain ?? data.coin ?? data.reward ?? 0;
   return {
-    ok: res.status >= 200 && res.status < 300,
+    ok: data.success === true || already,
     already,
     gain,
     msg: already ? '今日已签到' : `${message}${gain ? ` +${gain} 鸡腿` : ''}`,
