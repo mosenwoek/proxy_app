@@ -1,6 +1,6 @@
 #!name=PingMe & WeTalk 签到
 #!desc=双站每日签到 + 视频任务，支持多账号与自定义定时。账号数据存 BoxJS，跨 App 共享，不用重复抓包。
-#!author=mosen
+#!author=mosen[https://github.com/mosenwoek],moyan[https://t.me/tgxiaoxizf_bot]
 #!homepage=https://github.com/mosenwoek/proxy_app
 #!icon=https://raw.githubusercontent.com/axhani/icon/refs/heads/main/pingme&wetalk.png
 #!tag=签到,工具
