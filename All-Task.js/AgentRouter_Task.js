@@ -6,6 +6,7 @@
  *
  * @Author: @773075692 <https://github.com/773075692/agentrouter-checkin>
  * @Modifier: MaYIHEI <https://github.com/MaYIHEI/paperclip>
+ * @Maintainer: mosen[https://github.com/mosenwoek],moyan[https://t.me/tgxiaoxizf_bot]
  * @Channel: Telegram 频道 https://t.me/mayihei
  * @Updated: 2026-09-12
  *
