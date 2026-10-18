@@ -103,8 +103,11 @@ function notify(title, body, opts) {
     if (typeof PLUGIN.notify === "string" && /^(false|0)$/i.test(PLUGIN.notify)) return;
     try {
         if (isQuanX) {
-            $notify(NAME, title, body, opts);
+            // QX: $notify(title, subtitle, body, opts) — subtitle 放 title 里，opts 用 open-url
+            const qxOpts = opts && opts.openUrl ? { "open-url": opts.openUrl } : undefined;
+            $notify(NAME, title, body, qxOpts);
         } else {
+            // Loon/Surge: $notification.post(title, subtitle, body, attach)
             $notification.post(NAME, title, body, opts);
         }
     } catch (e) {
@@ -220,27 +223,25 @@ async function main() {
         }
     }
 
-    // 组装通知正文
+    // 组装通知正文：压到 3 行内（iOS 折叠只显示约 4 行，超了会被截断）
     const lines = [];
-    const rows = [
-        ["92 号", oil.p92, "🟠"],
-        ["95 号", oil.p95, "🟡"],
-        ["98 号", oil.p98, "🔴"],
-        ["0 号柴油", oil.diesel, "🟢"],
-    ];
-    for (const [label, val, dot] of rows) {
-        if (val !== null && val !== undefined) lines.push(dot + " " + label + "：" + val.toFixed(2) + " 元/升");
-    }
+    const f2 = v => (v === null || v === undefined) ? "--" : v.toFixed(2);
+    lines.push("🟠92 " + f2(oil.p92) + "  🟡95 " + f2(oil.p95));
+    lines.push("🔴98 " + f2(oil.p98) + "  🟢柴 " + f2(oil.diesel));
     if (showTrend && oil.trendInfo) {
-        lines.push("");
-        lines.push("📈 " + oil.trendInfo);
-    }
-    if (fromCache) {
-        lines.push("");
-        lines.push("⚠️ 数据来自缓存（网络异常）");
+        lines.push("📈 " + oil.trendInfo.replace(/油价|调整，|，维持目前价格不变。?/g, "").trim().slice(0, 40));
+    } else if (fromCache) {
+        lines.push("⚠️ 数据来自缓存");
     }
 
-    notify((oil.regionName || region) + " 今日油价", lines.join("\n"));
+    // 点击通知打开原网页，能看到完整信息
+    const openUrl = BASE_URL + "/" + region + ".shtml";
+
+    // 数据同时写进 Loon 脚本日志（点脚本记录能看到）
+    console.log(`[DATA] ${oil.regionName || region}  92=${f2(oil.p92)}  95=${f2(oil.p95)}  98=${f2(oil.p98)}  柴油=${f2(oil.diesel)}`);
+    if (oil.trendInfo) console.log("[DATA] " + oil.trendInfo);
+
+    notify((oil.regionName || region) + " 今日油价", lines.join("\n"), { openUrl: openUrl });
 }
 
 main()
