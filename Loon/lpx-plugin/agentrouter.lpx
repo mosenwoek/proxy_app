@@ -1,6 +1,6 @@
 #!name=AgentRouter 签到
 #!desc=每日自动登录签到，查看奖励、余额与累计消耗。支持多账号，账号可存 BoxJS（与其它 App 共享 / 备份）。
-#!author=mosen
+#!author=mosen[https://github.com/mosenwoek],moyan[https://t.me/tgxiaoxizf_bot]
 #!homepage=https://github.com/mosenwoek/proxy_app
 #!icon=https://raw.githubusercontent.com/mosenwoek/icons/refs/heads/main/AgentRouter.png
 #!tag=签到,工具
