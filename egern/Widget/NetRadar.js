@@ -10,6 +10,7 @@
  * • 策略指定：支持通过环境变量 POLICY 指定策略组/节点
  *
  * 🔗 引用链接: https://raw.githubusercontent.com/jnlaoshu/MySelf/master/Egern/Widget/NetRadar.js
+ * 🛠 维护: mosen[https://github.com/mosenwoek],moyan[https://t.me/tgxiaoxizf_bot]
  * ⏱️ 更新时间: 2026.08.17 09:00
  * ==========================================
  */
