@@ -4,7 +4,7 @@
   "author": "@Aswoth, @luckyday, BoxJS适配 @mosen",
   "icon": "https://raw.githubusercontent.com/axhani/icon/refs/heads/main/pingme&wetalk.png",
   "repo": "https://github.com/mosenwoek/proxy_app",
-  "updateTime": "2026-10-18 04:00:00",
+  "updateTime": "2026-10-18 05:00:00",
   "apps": [
     {
       "id": "mosen.pingme",
@@ -46,15 +46,21 @@
           "val": "false",
           "type": "selects",
           "items": [
-            { "key": "false", "label": "关闭" },
-            { "key": "true", "label": "开启" }
+            {
+              "key": "false",
+              "label": "关闭"
+            },
+            {
+              "key": "true",
+              "label": "开启"
+            }
           ],
           "desc": "开启后脚本输出合并来源、账号数、UA、请求路径等诊断日志"
         }
       ],
       "author": "@Aswoth, BoxJS适配 @mosen",
       "repo": "https://github.com/mosenwoek/proxy_app",
-      "script": "https://raw.githubusercontent.com/mosenwoek/proxy_app/refs/heads/main/Surge/sgmodule/PingMe_Task.js",
+      "script": "https://raw.githubusercontent.com/mosenwoek/proxy_app/refs/heads/main/All-Task.js/PingMe_Task.js",
       "icons": [
         "https://raw.githubusercontent.com/axhani/icon/refs/heads/main/pingme&wetalk.png",
         "https://raw.githubusercontent.com/axhani/icon/refs/heads/main/pingme&wetalk.png"
@@ -91,18 +97,92 @@
           "val": "false",
           "type": "selects",
           "items": [
-            { "key": "false", "label": "关闭" },
-            { "key": "true", "label": "开启" }
+            {
+              "key": "false",
+              "label": "关闭"
+            },
+            {
+              "key": "true",
+              "label": "开启"
+            }
           ],
           "desc": "开启后输出详细日志"
         }
       ],
       "author": "@luckyday",
       "repo": "https://github.com/mosenwoek/proxy_app",
-      "script": "https://raw.githubusercontent.com/mosenwoek/proxy_app/refs/heads/main/Surge/sgmodule/WeTalk_Task.js",
+      "script": "https://raw.githubusercontent.com/mosenwoek/proxy_app/refs/heads/main/All-Task.js/WeTalk_Task.js",
       "icons": [
         "https://raw.githubusercontent.com/axhani/icon/refs/heads/main/pingme&wetalk.png",
         "https://raw.githubusercontent.com/axhani/icon/refs/heads/main/pingme&wetalk.png"
+      ]
+    },
+    {
+      "id": "mosen.agentrouter",
+      "name": "AgentRouter",
+      "keys": [
+        "agentrouter_accounts_v1",
+        "agentrouter_username",
+        "agentrouter_password",
+        "agentrouter_clear",
+        "agentrouter_debug"
+      ],
+      "settings": [
+        {
+          "id": "agentrouter_accounts_v1",
+          "name": "账号库（JSON 数组）",
+          "val": "",
+          "type": "textarea",
+          "placeholder": "[\n  {\"username\": \"a@example.com\", \"password\": \"密码1\"},\n  {\"username\": \"b@example.com\", \"password\": \"密码2\"}\n]",
+          "desc": "多账号列表，每项包含 username 与 password。留空时回落到下面的单账号字段。⚠️ 备份文件里含明文密码，请勿分享"
+        },
+        {
+          "id": "agentrouter_username",
+          "name": "账号（单账号兼容）",
+          "val": "",
+          "type": "text",
+          "placeholder": "网站账号或邮箱",
+          "desc": "只在「账号库」为空时使用"
+        },
+        {
+          "id": "agentrouter_password",
+          "name": "密码（单账号兼容）",
+          "val": "",
+          "type": "text",
+          "placeholder": "网站登录密码",
+          "desc": "单独填写密码，首尾空格会保留；不要分享含账号密码的 BoxJS 备份"
+        },
+        {
+          "id": "agentrouter_clear",
+          "name": "清除账号信息",
+          "val": false,
+          "type": "boolean",
+          "desc": "开启后运行一次脚本会清空账号库和单账号字段并自动关闭，不发起签到"
+        },
+        {
+          "id": "agentrouter_debug",
+          "name": "调试模式",
+          "val": "false",
+          "type": "selects",
+          "items": [
+            {
+              "key": "false",
+              "label": "关闭"
+            },
+            {
+              "key": "true",
+              "label": "开启"
+            }
+          ],
+          "desc": "仅打印 HTTP 状态和签到判定，不打印账号密码、Cookie 或完整响应"
+        }
+      ],
+      "author": "@773075692, 移植 @MaYIHEI, 多账号 @mosen",
+      "repo": "https://github.com/mosenwoek/proxy_app",
+      "script": "https://raw.githubusercontent.com/mosenwoek/proxy_app/refs/heads/main/All-Task.js/AgentRouter_Task.js",
+      "icons": [
+        "https://raw.githubusercontent.com/mosenwoek/proxy_app/refs/heads/main/All-Task.js/agentrouter/icon.png",
+        "https://raw.githubusercontent.com/mosenwoek/proxy_app/refs/heads/main/All-Task.js/agentrouter/icon.png"
       ]
     }
   ]
