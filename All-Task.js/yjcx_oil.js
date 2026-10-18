@@ -1,91 +1,148 @@
 /**
- * ⛽ 全国实时油价查询（Loon 版）
+ * ⛽ 全国实时油价查询（Loon 版 v2 · 插件适配）
  * ------------------------------------------------------------------
- * 数据源：http://m.qiyoujiage.com/（同 Egern Oil_Widget 原作者）
- * 适配：mosen —— 从 Egern 小组件脚本移植到 Loon
+ * 数据源：http://m.qiyoujiage.com/
+ * 原始脚本：Egern Oil_Widget（IBL3ND/module）
+ * Loon 适配：mosen
  *
- * ⚠️ 重要说明（先读这个）
- * ------------------------------------------------------------------
- * Loon 没有「脚本小组件」运行时 —— Loon 的脚本体系只有
- * request / response / cron / network-changed / generic 五种，
- * 没有 Egern 那种 export default async function(ctx) 的 widget 环境，
- * 所以「小组件」这个形态 Loon 做不了，这是平台能力差异，不是适配问题。
- *
- * 本脚本能做到的：抓取油价 → 通知展示 / 存 BoxJS 供查询。
- * 想要真正的 iOS 桌面小组件 → 用 Scriptable / Widgy（我可以另写）。
+ * ⚠️ Loon 没有「脚本小组件」运行时（Egern 的 ctx.widget / WidgetKit
+ *    是 Egern 独有），所以本脚本用【通知】展示油价。
+ *    想要真桌面小组件 → Scriptable / Widgy。
  *
  * ─────────────────────────────────────────────────────────────
- * 用法
+ * 用法（插件版）
  * ─────────────────────────────────────────────────────────────
- * ① Loon 本地脚本 / 插件里，挂成 generic 或 cron：
- *    generic then script("...", "beijing")   ← 手动点一下查北京
- *    cron "0 8 * * *" then script("...", "guangdong/shenzhen")
+ * 装上 oil.lpx 后，插件设置里有：
+ *   · 地区          中文（"北京" / "广东-深圳"）或拼音（beijing / guangdong/shenzhen）
+ *   · 显示调价趋势  switch
+ *   · 推送通知      switch
+ *   · 定时          Cron 表达式（默认 0 8,20 * * *）
  *
- * ② 地区参数三级优先：
- *    $argument 字符串 > persistentStore 键 oil_region > 默认 beijing
+ * 参数三级优先：插件 [Argument] > persistentStore oil_region > 默认 beijing
  *
- * ③ 地区代码对照（同原版，拼音）：
- *    beijing / shanghai / tianjin / chongqing
- *    guangdong/guangzhou、guangdong/shenzhen …
- *    完整对照见 http://m.qiyoujiage.com/ 各省拼音
- *    也可直接填中文（如"北京"、"广东-深圳"，脚本内置映射）
+ * ─────────────────────────────────────────────────────────────
+ * 存储
+ * ─────────────────────────────────────────────────────────────
+ *   oil_cache       最近一次油价 JSON（断网时回退用）
+ *   oil_region      手动填的地区（BoxJS / 旧配置兼容）
+ *   oil_debug       "true" 打开调试日志
  */
 
-const SCRIPT_VERSION = "1.0.0";
+const SCRIPT_VERSION = "2.0.0";
 const NAME = "油价查询";
 const K_REGION = "oil_region";
 const K_CACHE = "oil_cache";
 const K_DEBUG = "oil_debug";
+const BASE_URL = "http://m.qiyoujiage.com";
 
-/* 中文 → 拼音映射（原版 REGION_MAP / CITY_MAP 精简版，可按需补） */
+const isQuanX = typeof $task !== "undefined";
+const isLoon = typeof $loon !== "undefined";
+const TIMEOUT = (isLoon || isQuanX) ? 15000 : 15;
+
+/* 插件 [Argument]（对象）或字符串参数 */
+const PLUGIN = (typeof $argument !== "undefined" && $argument && typeof $argument === "object") ? $argument : {};
+if (typeof $argument === "string" && $argument.trim()) {
+    // 字符串参数 key=value&key=value 解析（支持中文值）
+    $argument.split("&").forEach(kv => {
+        const i = kv.indexOf("=");
+        if (i > 0) {
+            const k = kv.slice(0, i).trim();
+            let v = kv.slice(i + 1).trim();
+            try { v = decodeURIComponent(v); } catch (_) {}
+            if (k) PLUGIN[k] = v;
+        } else {
+            // 整串就是一个地区名（如直接填"贵州-黔东南"）
+            PLUGIN.region = kv.trim();
+        }
+    });
+}
+
+/* 中文 → 拼音映射 */
 const REGION_MAP = {
     "北京": "beijing", "上海": "shanghai", "天津": "tianjin", "重庆": "chongqing",
     "广东-深圳": "guangdong/shenzhen", "广东-广州": "guangdong/guangzhou",
+    "广东-珠海": "guangdong/zhuhai", "广东-佛山": "guangdong/foshan",
+    "广东-东莞": "guangdong/dongguan", "广东-中山": "guangdong/zhongshan",
+    "广东-惠州": "guangdong/huizhou", "广东-汕头": "guangdong/shantou",
     "江苏": "jiangsu/nanjing", "浙江": "zhejiang/hangzhou", "山东": "shandong/jinan",
     "河南": "henan/zhengzhou", "河北": "hebei/shijiazhuang", "四川": "sichuan/chengdu",
     "湖北": "hubei/wuhan", "湖南": "hunan/changsha", "安徽": "anhui/hefei",
     "福建": "fujian/fuzhou", "江西": "jiangxi/nanchang", "辽宁": "liaoning/shenyang",
     "陕西": "shanxi-3/xian", "海南": "hainan/haikou", "山西": "shanxi-1/taiyuan",
     "吉林": "jilin/changchun", "黑龙江": "heilongjiang/haerbin", "云南": "yunnan/kunming",
-    "贵州": "guizhou/guiyang", "广西": "guangxi/nanning", "甘肃": "gansu/lanzhou",
+    "贵州": "guizhou/guiyang", "贵州-黔东南": "guizhou/qiandongnan",
+    "贵州-黔南": "guizhou/qiannan", "贵州-黔西南": "guizhou/qianxinan",
+    "贵州-遵义": "guizhou/zunyi", "贵州-安顺": "guizhou/anshun",
+    "贵州-毕节": "guizhou/bijie", "贵州-六盘水": "guizhou/liupanshui", "广西": "guangxi/nanning", "甘肃": "gansu/lanzhou",
     "青海": "qinghai/xining", "宁夏": "ningxia/yinchuan", "新疆": "xinjiang/wulumuqi",
     "西藏": "xizang/lasa", "内蒙古": "neimenggu/huhehaote",
 };
 
-const isQuanX = typeof $task !== "undefined";
-const isLoon = typeof $loon !== "undefined";
-
+/* ────────────────── 存储适配 ────────────────── */
 function readKey(k) {
-    if (isQuanX) return $prefs.valueForKey(k);
-    return $persistentStore.read(k);
+    const v = isQuanX ? $prefs.valueForKey(k) : $persistentStore.read(k);
+    return v === undefined || v === null ? "" : String(v);
 }
 function writeKey(v, k) {
-    if (isQuanX) return $prefs.setValueForKey(String(v), k);
-    return $persistentStore.write(String(v), k);
+    if (v === undefined || v === null) {
+        if (isQuanX) return $prefs.removeValueForKey(k);
+        return $persistentStore.write(null, k);
+    }
+    return isQuanX ? $prefs.setValueForKey(String(v), k) : $persistentStore.write(String(v), k);
 }
-function dbg(m) {
-    if (readKey(K_DEBUG) === "true") console.log("[DEBUG] " + m);
+function debugOn() {
+    if (typeof PLUGIN.debug === "boolean") return PLUGIN.debug;
+    if (typeof PLUGIN.debug === "string") return /^(true|1)$/i.test(PLUGIN.debug);
+    return readKey(K_DEBUG) === "true";
+}
+function dbg(m) { if (debugOn()) console.log("[DEBUG] " + m); }
+
+/* ────────────────── 通知 ────────────────── */
+function notify(title, body, opts) {
+    if (typeof PLUGIN.notify === "boolean" && !PLUGIN.notify) return;
+    if (typeof PLUGIN.notify === "string" && /^(false|0)$/i.test(PLUGIN.notify)) return;
+    try {
+        if (isQuanX) {
+            $notify(NAME, title, body, opts);
+        } else {
+            $notification.post(NAME, title, body, opts);
+        }
+    } catch (e) {
+        console.log("notify failed: " + (e && e.message));
+    }
 }
 
+/* ────────────────── HTTP ────────────────── */
 function httpGet(url) {
     return new Promise((resolve, reject) => {
-        const opts = { url, headers: { referer: "http://m.qiyoujiage.com/", "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)" }, timeout: isQuanX ? 15000 : 15 };
+        const opts = {
+            url,
+            headers: { referer: BASE_URL + "/", "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)" },
+            timeout: TIMEOUT,
+        };
         const cb = (err, resp, data) => {
-            if (err) return reject(new Error("网络请求失败"));
+            if (err) {
+                const detail = typeof err === "string" ? err : ((err && (err.message || err.error)) || "unknown");
+                dbg("httpGet err: " + detail);
+                return reject(new Error("网络请求失败" + (debugOn() ? "（" + detail + "）" : "")));
+            }
             const status = resp && (resp.status || resp.statusCode);
             let text = data;
-            if (text && typeof text !== "string") { try { text = new TextDecoder("utf-8").decode(text); } catch (_) { text = String(text); } }
+            if (text && typeof text !== "string") {
+                try { text = new TextDecoder("utf-8").decode(text); } catch (_) { text = String(text); }
+            }
             resolve({ status, text });
         };
         if (isQuanX) {
             opts.method = "GET";
-            $task.fetch(opts).then(r => cb(null, r, r.body), e => cb(e));
+            $task.fetch(opts).then(r => cb(null, r, r.body), e => cb(e && (e.error || e) || e));
         } else {
             $httpClient.get(opts, cb);
         }
     });
 }
 
+/* ────────────────── 地区解析 ────────────────── */
 function resolveRegion(input) {
     const i = String(input || "").trim();
     if (!i) return "";
@@ -93,6 +150,7 @@ function resolveRegion(input) {
     return i; // 拼音直传
 }
 
+/* ────────────────── HTML 解析 ────────────────── */
 function parseOil(html) {
     const out = { p92: null, p95: null, p98: null, diesel: null, regionName: "", trendInfo: "" };
 
@@ -112,71 +170,79 @@ function parseOil(html) {
         if (key) out[nameMap[key]] = val;
     }
 
-    // 趋势（可选，尽量解析）
     const regTrend = /<div class="tishi">[\s\S]*?<span>([^<]+)<\/span>[\s\S]*?<br\/>([\s\S]+?)<br\/>/;
     const tm = html.match(regTrend);
     if (tm) {
         const span = tm[1].replace(/<[^>]+>/g, "").trim();
         const body = tm[2].replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim();
-        const trend = /下调|下跌/.test(body) ? "↓" : "↑";
-        out.trendInfo = `${span} ${trend} ${body}`.trim();
+        out.trendInfo = `${span} ${body}`.trim();
     }
     return out;
 }
 
+/* ────────────────── 主流程 ────────────────── */
 async function main() {
     console.log(`[INFO] ${NAME} v${SCRIPT_VERSION}`);
 
-    // 地区：$argument > persistentStore > 默认北京
-    let arg = typeof $argument !== "undefined" ? $argument : "";
-    if (arg && typeof arg === "object") arg = arg.region || "";
-    let region = resolveRegion(String(arg || "").trim());
+    // 地区三级优先：插件 > oil_region 键 > beijing
+    let region = resolveRegion(String((PLUGIN.region !== undefined && PLUGIN.region !== null) ? PLUGIN.region : "").trim());
     if (!region) region = resolveRegion(readKey(K_REGION));
     if (!region) region = "beijing";
     dbg("region = " + region);
 
-    const url = `http://m.qiyoujiage.com/${region}.shtml`;
+    // 趋势开关
+    let showTrend = true;
+    if (typeof PLUGIN.show_trend === "boolean") showTrend = PLUGIN.show_trend;
+    else if (typeof PLUGIN.show_trend === "string") showTrend = !/^(false|0)$/i.test(PLUGIN.show_trend);
+    else if (readKey("oil_show_trend") === "false") showTrend = false;
+
+    const url = BASE_URL + "/" + region + ".shtml";
     const cache = (() => { try { return JSON.parse(readKey(K_CACHE) || "null"); } catch (_) { return null; } })();
 
     let oil;
+    let fromCache = false;
     try {
         const resp = await httpGet(url);
         if (resp.status !== 200) throw new Error(`HTTP ${resp.status}`);
         oil = parseOil(resp.text);
-        if (oil.p92 === null && oil.p95 === null && oil.diesel === null) throw new Error("解析失败");
+        if (oil.p92 === null && oil.p95 === null && oil.diesel === null) throw new Error("页面解析失败");
         writeKey(JSON.stringify({ ...oil, region, ts: Date.now() }), K_CACHE);
+        dbg("抓取成功");
     } catch (e) {
         dbg("抓取失败: " + e.message);
-        if (cache && cache.p92 !== null) {
+        if (cache && (cache.p92 !== null || cache.p95 !== null)) {
             oil = cache;
-            dbg("使用缓存");
+            fromCache = true;
+            dbg("使用缓存（" + new Date(cache.ts).toLocaleString() + "）");
         } else {
-            notify("❌ 油价查询失败", e.message);
+            notify("❌ 油价查询失败", e.message + "\n请检查地区拼写或稍后重试");
             return;
         }
     }
 
+    // 组装通知正文
     const lines = [];
-    lines.push(`⛽ ${oil.regionName || region}`);
-    lines.push("");
-    const rows = [["92 号", oil.p92, "🟠"], ["95 号", oil.p95, "🟡"], ["98 号", oil.p98, "🔴"], ["0 号柴油", oil.diesel, "🟢"]];
+    const rows = [
+        ["92 号", oil.p92, "🟠"],
+        ["95 号", oil.p95, "🟡"],
+        ["98 号", oil.p98, "🔴"],
+        ["0 号柴油", oil.diesel, "🟢"],
+    ];
     for (const [label, val, dot] of rows) {
-        if (val !== null && val !== undefined) lines.push(`${dot} ${label}：${val.toFixed(2)} 元/升`);
+        if (val !== null && val !== undefined) lines.push(dot + " " + label + "：" + val.toFixed(2) + " 元/升");
     }
-    if (oil.trendInfo) {
+    if (showTrend && oil.trendInfo) {
         lines.push("");
-        lines.push(`📈 ${oil.trendInfo}`);
+        lines.push("📈 " + oil.trendInfo);
     }
-    notify(`${oil.regionName || region} 今日油价`, lines.join("\n"));
+    if (fromCache) {
+        lines.push("");
+        lines.push("⚠️ 数据来自缓存（网络异常）");
+    }
+
+    notify((oil.regionName || region) + " 今日油价", lines.join("\n"));
 }
 
-function notify(title, body) {
-    try {
-        if (isQuanX) $notify(NAME, title, body);
-        else $notification.post(NAME, title, body);
-    } catch (e) {
-        console.log("notify failed: " + e.message);
-    }
-}
-
-main().catch(e => notify("❌ " + NAME, e.message)).then(() => $done());
+main()
+    .catch(e => notify("❌ " + NAME, (e && e.message) || String(e)))
+    .then(() => $done());
