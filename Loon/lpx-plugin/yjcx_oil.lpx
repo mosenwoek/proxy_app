@@ -2,7 +2,7 @@
 #!desc=全国实时油价（数据源 qiyoujiage.com）。在下方「地区」填地区名（中文或拼音），每天定时推送油价通知。
 #!author=原作者Egern群友,mosen修改适配[https://github.com/mosenwoek],moyan[https://t.me/tgxiaoxizf_bot]
 #!homepage=https://github.com/mosenwoek/proxy_app
-#!icon=https://raw.githubusercontent.com/mosenwoek/icons/refs/heads/main/v2_square.png
+#!icon=https://raw.githubusercontent.com/mosenwoek/icons/refs/heads/main/youjiacx.png
 #!tag=查询,工具
 #!loon_version=3.5.1(983)
 #!date=2026-10-19
