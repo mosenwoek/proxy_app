@@ -11,16 +11,16 @@
 # ─────────────────────────────────────────────────────────────
 #  使用流程
 #  ────────
-#   1. 装插件 → 打开「抓 Cookie」开关
+#   1. 装插件 → 打开「抓Cookie」开关
 #   2. 浏览器打开 www.nodeseek.com → 点右上角自己的头像（弹出名片）
-#   3. 弹「XX 抓取成功」即入库，然后关掉抓 Cookie 开关
+#   3. 弹「XX 抓取成功」即入库，然后关掉抓Cookie开关
 #   4. 换账号：退出登录 → 登录下一个号 → 再点头像
 #
-#  说明
-#  ────
-#   抓取拦截 GET /api/account/getInfo/{id}?readme=1 的响应体，
-#   从中取 member_id / member_name，Cookie 取请求头整份存档。
-#   签到打 POST /api/attendance?random=<true|false>。
+#  开关优先级（重要）
+#  ──────────────
+#   插件里的开关 = 本次运行的参数，优先级最高；
+#   插件没传参（旧版 Loon）时才回落到 BoxJS 里同名的键。
+#   两边都开/都关时以插件为准。想长期改默认值就改 BoxJS。
 #
 #  为什么需要 [Mitm]
 #   抓 Cookie 必须解密 HTTPS，所以 nodeseek.com 要列入 MitM。
@@ -28,18 +28,19 @@
 # ─────────────────────────────────────────────────────────────
 
 [Argument]
-ns_task    = switch,true,tag=每日签到,desc=关闭后只跑抓取，不执行签到
-ns_capture = switch,false,tag=抓Cookie,desc=开启后浏览 nodeseek.com 点自己头像即自动入库
-ns_random  = switch,false,tag=随机鸡腿,desc=关闭=固定 5 个鸡腿，开启=随机发放
-ns_notify  = switch,true,tag=运行通知,desc=签到结果推送到系统通知
-ns_debug   = switch,false,tag=调试模式,desc=输出请求、余额、解析过程等日志
-ns_cron    = input,"30 8 * * *",tag=签到定时,desc=五段 Cron：分 时 日 月 周
+enable_checkin = switch,true,tag=每日签到,desc=关闭后只查询余额，不执行签到
+enable_capture = switch,false,tag=抓Cookie,desc=开启后浏览 nodeseek.com 点自己头像即自动入库
+random_gift    = switch,false,tag=随机鸡腿,desc=关闭=固定 5 个鸡腿，开启=随机发放
+enable_notify  = switch,true,tag=运行通知,desc=签到结果推送到系统通知
+enable_debug   = switch,false,tag=调试模式,desc=输出请求、余额、解析过程等日志
+ns_cron        = input,"30 8 * * *",tag=签到定时,desc=五段 Cron：分 时 日 月 周
 
 [Script]
 # 抓 Cookie：命中个人名片接口的响应，requires_body 必须开
-response if ${url} ~= /^https:\/\/www\.nodeseek\.com\/api\/account\/getInfo\// then script("https://raw.githubusercontent.com/mosenwoek/proxy_app/refs/heads/main/All-Task.js/NodeSeek_Task.js") with enable=${ns_capture}, requires_body=true, tag="NodeSeek·抓Cookie"
+response if ${url} ~= /^https:\/\/www\.nodeseek\.com\/api\/account\/getInfo\// then script("https://raw.githubusercontent.com/mosenwoek/proxy_app/refs/heads/main/All-Task.js/NodeSeek_Task.js", {${enable_checkin}, ${enable_capture}, ${random_gift}, ${enable_notify}, ${enable_debug}}) with enable=${enable_capture}, requires_body=true, tag="NodeSeek·抓Cookie"
+
 # 定时签到
-cron ${ns_cron} then script("https://raw.githubusercontent.com/mosenwoek/proxy_app/refs/heads/main/All-Task.js/NodeSeek_Task.js") with enable=${ns_task}, tag="NodeSeek·签到", timeout=120
+cron ${ns_cron} then script("https://raw.githubusercontent.com/mosenwoek/proxy_app/refs/heads/main/All-Task.js/NodeSeek_Task.js", {${enable_checkin}, ${enable_capture}, ${random_gift}, ${enable_notify}, ${enable_debug}}) with enable=${enable_checkin}, tag="NodeSeek·签到", timeout=120
 
 [Mitm]
 hostname = www.nodeseek.com
