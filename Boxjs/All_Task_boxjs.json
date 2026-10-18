@@ -264,10 +264,10 @@
       "repo": "https://github.com/mosenwoek/proxy_app",
       "script": "https://raw.githubusercontent.com/mosenwoek/proxy_app/refs/heads/main/All-Task.js/NodeSeek_Task.js",
       "icons": [
-        "https://raw.githubusercontent.com/mosenwoek/icons/refs/heads/main/NodeSeek.png",
-        "https://raw.githubusercontent.com/mosenwoek/icons/refs/heads/main/NodeSeek.png"
+        "https://raw.githubusercontent.com/mosenwoek/icons/refs/heads/main/NodeSeek.png?v=20261018",
+        "https://raw.githubusercontent.com/mosenwoek/icons/refs/heads/main/NodeSeek.png?v=20261018"
       ],
-      "icon": "https://raw.githubusercontent.com/mosenwoek/icons/refs/heads/main/NodeSeek.png"
+      "icon": "https://raw.githubusercontent.com/mosenwoek/icons/refs/heads/main/NodeSeek.png?v=20261018"
     }
   ]
 }
