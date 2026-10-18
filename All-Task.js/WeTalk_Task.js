@@ -1,4 +1,5 @@
 // 2026/06/06
+// 维护: mosen[https://github.com/mosenwoek],moyan[https://t.me/tgxiaoxizf_bot]
 /*
 WeTalk Loon version
 
