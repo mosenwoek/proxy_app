@@ -2,7 +2,7 @@
 #!desc=每日自动登录签到，查看奖励、余额与累计消耗。支持多账号，账号可存 BoxJS（与其它 App 共享 / 备份）。
 #!author=mosen
 #!homepage=https://github.com/mosenwoek/proxy_app
-#!icon=https://raw.githubusercontent.com/MaYIHEI/paperclip/refs/heads/main/app/agentrouter/icon.png
+#!icon=https://raw.githubusercontent.com/mosenwoek/proxy_app/refs/heads/main/All-Task.js/agentrouter/icon.png
 #!tag=签到,工具
 #!loon_version=3.5.1(983)
 #!date=2026-10-18
@@ -27,9 +27,10 @@ accounts = input,"",type=string,tag=账号库JSON可选,desc=选填。填了优�
 username = input,"",type=string,tag=账号
 password = input,"",type=string,tag=密码
 debug    = switch,false,tag=调试模式,desc=只打印 HTTP 状态和签到判定，不打印账号密码
+sync     = switch,false,tag=同步到BoxJS,desc=打开后跑一次，把上面填的账号并入 BoxJS 账号库，完成后自动关闭
 cron     = input,"0 9 * * *",type=string,tag=定时,desc=五段 Cron：分 时 日 月 周
 
 [Script]
 
 # 每天 09:00 跑一次；定时可在插件设置里改
-cron ${cron} then script("https://raw.githubusercontent.com/mosenwoek/proxy_app/refs/heads/main/All-Task.js/AgentRouter_Task.js", {${accounts}, ${username}, ${password}, ${debug}}) with tag="AgentRouter 签到", timeout=300, img_url="https://raw.githubusercontent.com/mosenwoek/proxy_app/refs/heads/main/All-Task.js/agentrouter/icon.png"
+cron ${cron} then script("https://raw.githubusercontent.com/mosenwoek/proxy_app/refs/heads/main/All-Task.js/AgentRouter_Task.js", {${accounts}, ${username}, ${password}, ${debug}, ${sync}}) with tag="AgentRouter 签到", timeout=300, img_url="https://raw.githubusercontent.com/mosenwoek/proxy_app/refs/heads/main/All-Task.js/agentrouter/icon.png"
