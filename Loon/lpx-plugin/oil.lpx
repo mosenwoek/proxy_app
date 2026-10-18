@@ -1,0 +1,20 @@
+#!name=油价查询
+#!desc=全国实时油价（数据源 qiyoujiage.com）。在下方「地区」填地区名（中文或拼音），每天定时推送油价通知。
+#!author=mosen（数据源同 Egern Oil_Widget）
+#!homepage=https://github.com/mosenwoek/proxy_app
+#!icon=https://raw.githubusercontent.com/mosenwoek/icons/refs/heads/main/v2_square.png
+#!tag=查询,工具
+#!loon_version=3.5.1(983)
+#!date=2026-10-19
+#!type=normal
+
+[Argument]
+region = input,"北京",type=string,tag=地区,desc=填中文（如"北京""广东-深圳"）或拼音路径（如 beijing、guangdong/shenzhen）。留空默认北京
+show_trend = switch,true,tag=显示调价趋势,desc=关闭后通知里不带"下次油价调整"信息
+notify_switch = switch,true,tag=推送通知,desc=关闭后不弹通知（只用于手动刷新缓存）
+cron_time = input,"0 8,20 * * *",type=string,tag=定时,desc=五段 Cron：分 时 日 月 周。默认每天 8 点和 20 点各查一次
+
+[Script]
+
+# 每天 8 点 / 20 点各推一次油价（时间在插件设置里改）
+cron ${cron_time} then script("https://raw.githubusercontent.com/mosenwoek/proxy_app/refs/heads/main/All-Task.js/oil_loon.js", {${region}, ${show_trend}, ${notify_switch}}) with tag="油价查询", timeout=60, img_url="https://raw.githubusercontent.com/mosenwoek/icons/refs/heads/main/PingMe.png"
