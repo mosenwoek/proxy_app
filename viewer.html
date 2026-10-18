@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>lpx 预览器</title>
+<style>
+  :root { color-scheme: light dark; }
+  body { margin:0; font-family:-apple-system,sans-serif; background:#f5f5f7; }
+  .dark body, @media (prefers-color-scheme: dark){ }
+  header { padding:14px 16px; background:#fff; box-shadow:0 1px 4px rgba(0,0,0,.08); position:sticky; top:0; }
+  h1 { font-size:17px; margin:0 0 10px; }
+  .row { display:flex; gap:8px; }
+  input { flex:1; padding:10px 12px; border:1px solid #d2d2d7; border-radius:10px; font-size:14px; min-width:0; }
+  button { padding:10px 16px; border:0; border-radius:10px; background:#007aff; color:#fff; font-size:14px; }
+  .hint { font-size:12px; color:#86868b; margin-top:8px; }
+  .hint a { color:#007aff; text-decoration:none; }
+  pre { margin:12px; padding:14px; background:#fff; border-radius:12px; font-family:ui-monospace,Menlo,monospace;
+        font-size:13px; line-height:1.5; white-space:pre-wrap; word-break:break-all; overflow-x:auto;
+        box-shadow:0 1px 4px rgba(0,0,0,.06); }
+  #msg { margin:12px; padding:12px 14px; border-radius:10px; font-size:14px; display:none; }
+  .err { background:#ffe8e8; color:#c0392b; }
+  .ok  { background:#e4f7e9; color:#1e7e34; }
+</style>
+</head>
+<body>
+<header>
+  <h1>📄 插件预览器</h1>
+  <div class="row">
+    <input id="url" type="url" placeholder="粘贴 .lpx / .plugin / 任意 raw 链接">
+    <button onclick="go()">预览</button>
+  </div>
+  <div class="hint">粘贴 raw 链接直接预览；粘贴 github.com 网页链接会自动转 raw。URL 参数：<code>?u=&lt;链接&gt;</code></div>
+</header>
+<div id="msg"></div>
+<pre id="out" hidden></pre>
+<script>
+const $ = id => document.getElementById(id);
+async function load(u){
+  $('msg').className=''; $('msg').style.display='block'; $('msg').textContent='抓取中…'; $('out').hidden=true;
+  try{
+    const r = await fetch(u);
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    const t = await r.text();
+    $('out').textContent = t;
+    $('out').hidden = false;
+    $('msg').textContent = '✅ ' + new URL(u).pathname.split('/').pop() + ' · ' + t.length + ' 字节';
+  }catch(e){
+    $('msg').className='err';
+    $('msg').textContent = '❌ ' + e.message + '（URL 需为可直链访问的 raw 地址）';
+  }
+}
+function toRaw(u){
+  u = u.trim();
+  const m = u.match(/^https?:\/\/github\.com\/([^\/]+)\/([^\/]+)\/blob\/(.+)$/);
+  if(m) return 'https://raw.githubusercontent.com/'+m[1]+'/'+m[2]+'/'+m[3];
+  const g = u.match(/^https?:\/\/gist\.github\.com\/[^\/]+\/([0-9a-f]+)(\/[0-9a-f]+)?/);
+  if(g) return 'https://gist.githubusercontent.com/raw/'+g[1];
+  return u;
+}
+function go(){ const u=toRaw($('url').value); if(u && u.startsWith('http')){ history.replaceState(null,'','?u='+encodeURIComponent(u)); load(u); } }
+const q = new URLSearchParams(location.search).get('u');
+if(q){ $('url').value = q; load(q); }
+</script>
+</body>
+</html>
