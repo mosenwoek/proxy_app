@@ -1,7 +1,7 @@
 /**
  * HCNSEC · 每日登录签到
  * 
- * @Author: Adapted by mosen
+ * @Author: Adapted by mosen[https://github.com/mosenwoek],moyan[https://t.me/tgxiaoxizf_bot]
  * @Updated: 2024-05-22
  *
  * ===== BoxJS 配置 =====
@@ -16,7 +16,7 @@
 
 // ==BoxJs==
 // @name HCNSEC 签到
-// @author mosen
+// @author mosen[https://github.com/mosenwoek],moyan[https://t.me/tgxiaoxizf_bot]
 // @icon https://api.hcnsec.cn/favicon.ico
 // @keys hcnsec_username hcnsec_password hcnsec_debug
 // @settings [
