@@ -1,0 +1,35 @@
+#!name=AgentRouter 签到
+#!desc=每日自动登录签到，查看奖励、余额与累计消耗。支持多账号，账号可存 BoxJS（与其它 App 共享 / 备份）。
+#!author=mosen
+#!homepage=https://github.com/mosenwoek/proxy_app
+#!icon=https://raw.githubusercontent.com/mosenwoek/proxy_app/refs/heads/main/All-Task.js/agentrouter/icon.png
+#!tag=签到,工具
+#!loon_version=3.5.1(983)
+#!date=2026-10-18
+#!type=normal
+
+# ─────────────────────────────────────────────────────────────
+#  不需要抓包、不需要 MitM
+#  这是账号密码登录型站点（new-api 系），脚本自己 POST /api/user/login。
+#
+#  账号三级优先：
+#    ① 本插件的「账号库」多账号 JSON
+#    ② 本插件的「账号」+「密码」
+#    ③ BoxJS → AgentRouter → 账号库（推荐，能跨 App 共享和备份）
+#
+#  多账号 JSON 格式：
+#    [{"username":"a@example.com","password":"密码1"},
+#     {"username":"b@example.com","password":"密码2"}]
+# ─────────────────────────────────────────────────────────────
+
+[Argument]
+accounts = input,"",type=string,tag=账号库JSON可选,desc=选填。填了优先于单账号字段。格式见插件主页说明
+username = input,"",type=string,tag=账号
+password = input,"",type=string,tag=密码
+debug    = switch,false,tag=调试模式,desc=只打印 HTTP 状态和签到判定，不打印账号密码
+cron     = input,"0 9 * * *",type=string,tag=定时,desc=五段 Cron：分 时 日 月 周
+
+[Script]
+
+# 每天 09:00 跑一次；定时可在插件设置里改
+cron ${cron} then script("https://raw.githubusercontent.com/mosenwoek/proxy_app/refs/heads/main/All-Task.js/AgentRouter_Task.js", {${accounts}, ${username}, ${password}, ${debug}}) with tag="AgentRouter 签到", timeout=300, img_url="https://raw.githubusercontent.com/mosenwoek/proxy_app/refs/heads/main/All-Task.js/agentrouter/icon.png"
