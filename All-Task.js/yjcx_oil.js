@@ -4,6 +4,7 @@
  * 数据源：http://m.qiyoujiage.com/
  * 原始脚本：Egern Oil_Widget（IBL3ND/module）
  * Loon 适配：mosen
+ #!author=mosen[https://github.com/mosenwoek],moyan[https://t.me/tgxiaoxizf_bot]
  *
  * ⚠️ Loon 没有「脚本小组件」运行时（Egern 的 ctx.widget / WidgetKit
  *    是 Egern 独有），所以本脚本用【通知】展示油价。
@@ -28,7 +29,7 @@
  *   oil_debug       "true" 打开调试日志
  */
 
-const SCRIPT_VERSION = "2.0.0";
+const SCRIPT_VERSION = "2.1.0";
 const NAME = "油价查询";
 const K_REGION = "oil_region";
 const K_CACHE = "oil_cache";
@@ -98,18 +99,12 @@ function debugOn() {
 function dbg(m) { if (debugOn()) console.log("[DEBUG] " + m); }
 
 /* ────────────────── 通知 ────────────────── */
-function notify(title, body, opts) {
+function notify(subtitle, body) {
     if (typeof PLUGIN.notify === "boolean" && !PLUGIN.notify) return;
     if (typeof PLUGIN.notify === "string" && /^(false|0)$/i.test(PLUGIN.notify)) return;
     try {
-        if (isQuanX) {
-            // QX: $notify(title, subtitle, body, opts) — subtitle 放 title 里，opts 用 open-url
-            const qxOpts = opts && opts.openUrl ? { "open-url": opts.openUrl } : undefined;
-            $notify(NAME, title, body, qxOpts);
-        } else {
-            // Loon/Surge: $notification.post(title, subtitle, body, attach)
-            $notification.post(NAME, title, body, opts);
-        }
+        if (isQuanX) $notify(NAME, subtitle, body);
+        else $notification.post(NAME, subtitle, body);
     } catch (e) {
         console.log("notify failed: " + (e && e.message));
     }
@@ -223,25 +218,64 @@ async function main() {
         }
     }
 
-    // 组装通知正文：压到 3 行内（iOS 折叠只显示约 4 行，超了会被截断）
-    const lines = [];
-    const f2 = v => (v === null || v === undefined) ? "--" : v.toFixed(2);
-    lines.push("🟠92 " + f2(oil.p92) + "  🟡95 " + f2(oil.p95));
-    lines.push("🔴98 " + f2(oil.p98) + "  🟢柴 " + f2(oil.diesel));
-    if (showTrend && oil.trendInfo) {
-        lines.push("📈 " + oil.trendInfo.replace(/油价|调整，|，维持目前价格不变。?/g, "").trim().slice(0, 40));
-    } else if (fromCache) {
-        lines.push("⚠️ 数据来自缓存");
+    // ── 组装：一行一个油品，数字右对齐 ──
+    const pad = v => (v === null || v === undefined) ? "  --" : v.toFixed(2).padStart(5);
+    const row = (dot, label, v) => dot + " " + label + "  " + pad(v) + " 元/升";
+    const body = [
+        row("🟠", "92号", oil.p92),
+        row("🟡", "95号", oil.p95),
+        row("🔴", "98号", oil.p98),
+        row("🟢", "柴油", oil.diesel),
+    ].join("\n");
+
+    const regionLabel = oil.regionName || region;
+    // 副标题：地区 + 趋势（一行塞下，避免正文超 4 行被截断）
+    const trend = shortTrend(oil.trendInfo, showTrend);
+    const subtitle = (fromCache ? "⚠️ " : "") + regionLabel + (trend ? " · " + trend : " 今日油价");
+
+    // ── 日志：与通知同格式 + 趋势全文 + 数据源 ──
+    console.log("[DATA] " + regionLabel + " · " + fmtNow() + (fromCache ? " （缓存）" : ""));
+    console.log("[DATA] " + row("🟠", "92号", oil.p92));
+    console.log("[DATA] " + row("🟡", "95号", oil.p95));
+    console.log("[DATA] " + row("🔴", "98号", oil.p98));
+    console.log("[DATA] " + row("🟢", "柴油", oil.diesel));
+    if (oil.trendInfo) console.log("[DATA] 📈 " + oil.trendInfo);
+    if (fromCache) console.log("[DATA] ⚠️ 本次数据来自缓存（网络异常）");
+    console.log("[DATA] 🔗 " + url);
+
+    notify(subtitle, body);
+}
+
+/** 现在时间 "10-18 20:15" */
+function fmtNow() {
+    const d = new Date();
+    const p = n => String(n).padStart(2, "0");
+    return p(d.getMonth() + 1) + "-" + p(d.getDate()) + " " + p(d.getHours()) + ":" + p(d.getMinutes());
+}
+
+/** 趋势压成副标题一行，如 "10/15 搁浅" / "10/15 ↓0.15" */
+function shortTrend(info, show) {
+    if (!show || !info) return "";
+    const t = String(info);
+    // 日期 10月15日 -> 10/15
+    let date = "";
+    const dm = t.match(/(\d{1,2})月(\d{1,2})日/);
+    if (dm) date = dm[1].replace(/^0/, "") + "/" + dm[2];
+    // 方向
+    let dir = "";
+    if (/搁浅|不变|维持/.test(t)) dir = "搁浅";
+    else if (/下调|下跌/.test(t)) dir = "↓";
+    else if (/上调|上涨/.test(t)) dir = "↑";
+    // 幅度
+    let amt = "";
+    const am = t.match(/(\d+(?:\.\d+)?)\s*[-~]\s*(\d+(?:\.\d+)?)\s*元\/升/);
+    if (am) amt = am[1] + "-" + am[2];
+    else {
+        const am2 = t.match(/(\d+(?:\.\d+)?)\s*元\/升/);
+        if (am2) amt = am2[1];
     }
-
-    // 点击通知打开原网页，能看到完整信息
-    const openUrl = BASE_URL + "/" + region + ".shtml";
-
-    // 数据同时写进 Loon 脚本日志（点脚本记录能看到）
-    console.log(`[DATA] ${oil.regionName || region}  92=${f2(oil.p92)}  95=${f2(oil.p95)}  98=${f2(oil.p98)}  柴油=${f2(oil.diesel)}`);
-    if (oil.trendInfo) console.log("[DATA] " + oil.trendInfo);
-
-    notify((oil.regionName || region) + " 今日油价", lines.join("\n"), { openUrl: openUrl });
+    const parts = [date, dir + amt].filter(Boolean);
+    return parts.join(" ");
 }
 
 main()
