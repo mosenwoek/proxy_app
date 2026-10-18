@@ -48,6 +48,8 @@ const USER_KEY = "agentrouter_username";
 const PASSWORD_KEY = "agentrouter_password";
 // v2 新增：BoxJS 多账号库，格式 [{username, password}]
 const ACCOUNTS_KEY = "agentrouter_accounts_v1";
+// v2 新增：一次性「同步到 BoxJS」开关
+const SYNC_KEY = "agentrouter_sync";
 const CLEAR_KEY = "agentrouter_clear";
 const DEBUG_KEY = "agentrouter_debug";
 const IS_LOON = $.isLoon();
@@ -69,6 +71,19 @@ async function run() {
         $.deldata(PASSWORD_KEY);
         $.setdata("false", CLEAR_KEY);
         $.msg($.name, "✅ 账号信息已清除", "需要继续签到时，请在 BoxJS 重新填写账号库");
+        return;
+    }
+
+    // 一次性：把插件里填的账号同步进 BoxJS 账号库
+    if (syncRequested()) {
+        const pluginAccounts = pluginProvidedAccounts();
+        if (!pluginAccounts.length) {
+            $.setdata("false", SYNC_KEY);
+            $.msg($.name, "⚠️ 同步失败", "插件里没有填写账号，没有可同步的内容");
+            return;
+        }
+        const total = syncToBoxjs(pluginAccounts);
+        $.msg($.name, "✅ 已同步到 BoxJS", `插件里的 ${pluginAccounts.length} 个账号已并入 BoxJS 账号库\n当前共 ${total} 个账号`);
         return;
     }
 
@@ -104,6 +119,55 @@ async function run() {
         $.msg($.name, `签到汇总（${results.length} 个账号）`, results.map((result, i) =>
             `👤 账号 ${i + 1} · ${maskAccount(accounts[i].username)}\n${result.title}\n${result.content}`).join("\n\n"));
     }
+}
+
+/** 同步开关是否打开（插件 switch 或 BoxJS boolean 都认） */
+function syncRequested() {
+    if (IS_LOON && typeof PLUGIN.sync === "boolean") return PLUGIN.sync;
+    const v = $.getdata(SYNC_KEY);
+    return v === "true" || v === true || v === 1;
+}
+
+/** 只有插件真的填了账号才允许同步，避免把 BoxJS 自己的数据再写一遍 */
+function pluginProvidedAccounts() {
+    if (!IS_LOON) return [];
+    const multi = String(PLUGIN.accounts || "").trim();
+    if (multi) {
+        try {
+            const arr = JSON.parse(multi);
+            if (Array.isArray(arr)) {
+                return arr.filter((a) => a && typeof a.username === "string" && a.username.trim()
+                    && typeof a.password === "string" && a.password)
+                    .map((a) => ({ username: a.username.trim(), password: a.password }));
+            }
+        } catch (_) {}
+        return [];
+    }
+    const u = String(PLUGIN.username || "").trim();
+    const p = PLUGIN.password || "";
+    return u && p ? [{ username: u, password: p }] : [];
+}
+
+/** 按 username 合并进 BoxJS 账号库，插件值覆盖同名项；返回合并后的总数 */
+function syncToBoxjs(incoming) {
+    let existing = [];
+    const raw = $.getdata(ACCOUNTS_KEY);
+    if (raw && String(raw).trim()) {
+        try {
+            const arr = JSON.parse(raw);
+            if (Array.isArray(arr)) {
+                existing = arr.filter((a) => a && typeof a.username === "string" && a.username.trim()
+                    && typeof a.password === "string" && a.password);
+            }
+        } catch (_) {}
+    }
+    const map = {};
+    existing.forEach((a) => { map[String(a.username).trim().toLowerCase()] = { username: a.username.trim(), password: a.password }; });
+    incoming.forEach((a) => { map[a.username.toLowerCase()] = { username: a.username, password: a.password }; });
+    const merged = Object.keys(map).map((k) => map[k]);
+    $.setdata(JSON.stringify(merged, null, 2), ACCOUNTS_KEY);
+    $.setdata("false", SYNC_KEY);
+    return merged.length;
 }
 
 function readAccounts() {
