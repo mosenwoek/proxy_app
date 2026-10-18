@@ -2,7 +2,7 @@
 #!desc=NodeSeek 每日签到领鸡腿，支持多账号、余额查询、Cookie 自动抓取。账号存 BoxJS，Loon / Surge / Egern 通用。
 #!author=mosen[https://github.com/mosenwoek],moyan[https://t.me/tgxiaoxizf_bot]
 #!homepage=https://github.com/mosenwoek/proxy_app
-#!icon=https://raw.githubusercontent.com/mosenwoek/icons/refs/heads/main/NodeSeek.png
+#!icon=https://raw.githubusercontent.com/mosenwoek/icons/refs/heads/main/NodeSeek.png?v=20261018
 #!tag=签到,工具
 #!loon_version=3.5.1(983)
 #!date=2026-10-18
