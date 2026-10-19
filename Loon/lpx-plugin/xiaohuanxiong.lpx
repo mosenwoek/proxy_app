@@ -2,7 +2,7 @@
 #!desc=把商汤小浣熊额度变成 OpenAI 兼容 API（/v1/chat/completions、/v1/models），附每日自动签到领积分。账密自动登录、token 缓存、过期自动续期，Minis 等任何 OpenAI 协议客户端可用。
 #!author=LinkPass888[https://github.com/LinkPass888],mosen[https://github.com/mosenwoek],moyan[https://t.me/tgxiaoxizf_bot]
 #!homepage=https://github.com/mosenwoek/proxy_app
-#!icon=https://raw.githubusercontent.com/mosenwoek/icons/refs/heads/main/xiaohuanxiong.png?v=20261019
+#!icon=https://raw.githubusercontent.com/mosenwoek/icons/refs/heads/main/xiaohuanxiong.png?v=20261019b
 #!tag=签到,工具
 #!loon_version=3.5.1(983)
 #!date=2026-10-19
