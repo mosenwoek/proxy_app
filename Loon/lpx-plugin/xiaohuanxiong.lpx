@@ -33,10 +33,10 @@ notify  = switch,true,tag=运行通知,desc=签到结果推送到系统通知
 
 [Script]
 # 反代改写：/v1/* 请求注入登录态 + 映射模型名，上游 SSE 流原生透传
-request if ${url} ~= /^https:\/\/xiaohuanxiong\.com\/v1\/(chat\/completions|models|checkin|probe)/ then script("https://raw.githubusercontent.com/mosenwoek/proxy_app/refs/heads/main/js/raccoon-openai.js", nation=${nation}, phone=${phone}, password=${password}, token=${token}, notify=${notify}) with requires_body=true, tag=小浣熊·反代, timeout=600
+request if ${url} ~= /^https:\/\/xiaohuanxiong\.com\/v1\/(chat\/completions|models|checkin|probe)/ then script("https://raw.githubusercontent.com/mosenwoek/proxy_app/refs/heads/main/js/raccoon-openai.js", {${nation}, ${phone}, ${password}, ${token}, ${notify}}) with requires_body=true, tag=小浣熊·反代, timeout=600
 
 # 每日签到
-cron ${xhx_cron} then script("https://raw.githubusercontent.com/mosenwoek/proxy_app/refs/heads/main/js/raccoon-openai.js", nation=${nation}, phone=${phone}, password=${password}, token=${token}, notify=${notify}) with tag=小浣熊·签到, timeout=120
+cron ${xhx_cron} then script("https://raw.githubusercontent.com/mosenwoek/proxy_app/refs/heads/main/js/raccoon-openai.js", {${nation}, ${phone}, ${password}, ${token}, ${notify}}) with tag=小浣熊·签到, timeout=120
 
 [Mitm]
 hostname = %APPEND% xiaohuanxiong.com
