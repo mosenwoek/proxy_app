@@ -343,14 +343,20 @@ function runCheckin(cb) {
       const grantNote = err1 ? ("发放接口: " + err1.message) : toastText(info);
       requestJson("GET", "/api/web/points/v1/bills?paging.limit=20&paging.offset=0", token, {}, 25000, function (err2, bills) {
         let sum = 0;
+        let spend = 0;
+        let calls = 0;
         const names = [];
         const today = beijingToday();
         for (const it of (bills && bills.items) || []) {
           const pts = Number(it.points || 0);
           const createdAt = String(it.created_at || "");
-          if (pts > 0 && createdAt.slice(0, 10) === today) {
+          if (createdAt.slice(0, 10) !== today) continue;
+          if (pts > 0) {
             sum += pts;
             names.push((it.event_name || "积分") + " +" + pts);
+          } else if (pts < 0) {
+            spend += -pts;
+            calls += 1;
           }
         }
         requestJson("GET", "/api/web/points/v1/balance", token, {}, 20000, function (err3, bal) {
@@ -369,10 +375,13 @@ function runCheckin(cb) {
           // 通知排版：副标题一行结论，正文一行一条，≤4 行防 iOS 折叠截断
           const entryLine = names.length ? names.slice(0, 2).join(" · ") : (err1 && err2 ? (r.err_grant + "；" + r.err_bills) : "可能今日已领过或发放延迟");
           const balLine = isNaN(avail) ? "" : "余额 " + avail + (wallets.length ? "（" + wallets.join("/") + "）" : "");
+          const useLine = spend > 0 ? "📉 今日消耗 " + spend + " 积分 · " + calls + " 次调用" : "";
+          r.spend = spend;
+          r.calls = calls;
           if (sum > 0) {
             r.title = "🦝 小浣熊签到成功";
             r.subtitle = "今日 +" + sum + " 积分 · " + (isNaN(avail) ? "余额未知" : "余额 " + avail);
-            r.body = entryLine + (balLine ? "\n" + balLine : "") + (grantNote && grantNote !== "[]" ? "\n" + grantNote.slice(0, 60) : "");
+            r.body = [entryLine, useLine, balLine].filter(Boolean).join("\n");
           } else if (err1 && err2) {
             r.title = "🦝 小浣熊签到失败";
             r.subtitle = "发放与账单查询均失败";
@@ -380,9 +389,9 @@ function runCheckin(cb) {
           } else {
             r.title = "🦝 小浣熊签到";
             r.subtitle = "账单未见今日入账" + (isNaN(avail) ? "" : " · 余额 " + avail);
-            r.body = (grantNote && grantNote !== "[]" ? grantNote.slice(0, 80) : (err2 ? "账单: " + r.err_bills : "可能今日已领过或发放延迟"));
+            r.body = [useLine || (grantNote && grantNote !== "[]" ? grantNote.slice(0, 80) : (err2 ? "账单: " + r.err_bills : "可能今日已领过或发放延迟")), balLine].filter(Boolean).join("\n");
           }
-          r.notify_line = entryLine + (balLine ? "；" + balLine : "");
+          r.notify_line = [entryLine, useLine, balLine].filter(Boolean).join("；");
           cb(r);
         });
       });
