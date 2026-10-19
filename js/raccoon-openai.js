@@ -9,8 +9,10 @@
  * $argument: nation=86&phone=...&password=...&token=...&notify=true
  * 维护：mosen[https://github.com/mosenwoek],moyan[https://t.me/tgxiaoxizf_bot]
  */
-const A = parseArg(typeof $argument === "object" && $argument !== null ? Object.entries($argument).map(([k, v]) => k + "=" + v).join("&") : (typeof $argument === "string" ? $argument : ""));
-const NOTIFY_ON = (A.notify || "true") !== "false" && (A.notify || "true") !== "off";
+const A = parseArg(typeof $argument === "object" && $argument !== null
+  ? Object.entries($argument).filter(([, v]) => v !== null && v !== undefined && String(v) !== "").map(([k, v]) => k + "=" + v).join("&")
+  : (typeof $argument === "string" ? $argument : ""));
+const NOTIFY_ON = String(A.notify === undefined ? "true" : A.notify) !== "false";
 const AUTH = "https://xiaohuanxiong.com/api/web/auth/v1";
 const LLM = "https://xiaohuanxiong.com/api/web/llm/v2";
 const ENC_KEY = "senseraccoon2023";
