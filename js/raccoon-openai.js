@@ -6,9 +6,11 @@
  * 参考 Agent2API（aimod-cc/Agent2API）racoon 适配器。
  * by LinkPass888
  *
- * $argument: nation=86&phone=...&password=...&token=...
+ * $argument: nation=86&phone=...&password=...&token=...&notify=true
+ * 维护：mosen[https://github.com/mosenwoek],moyan[https://t.me/tgxiaoxizf_bot]
  */
-const A = parseArg(typeof $argument === "string" ? $argument : "");
+const A = parseArg(typeof $argument === "object" && $argument !== null ? Object.entries($argument).map(([k, v]) => k + "=" + v).join("&") : (typeof $argument === "string" ? $argument : ""));
+const NOTIFY_ON = (A.notify || "true") !== "false" && (A.notify || "true") !== "off";
 const AUTH = "https://xiaohuanxiong.com/api/web/auth/v1";
 const LLM = "https://xiaohuanxiong.com/api/web/llm/v2";
 const ENC_KEY = "senseraccoon2023";
@@ -362,15 +364,23 @@ function runCheckin(cb) {
             ? (err3 ? "余额查询失败: " + err3.message : "")
             : ("总余额 " + avail + "（" + wallets.join(" / ") + "）");
           const r = { ok: sum > 0, today: today, sum: sum, entries: names, balance: isNaN(avail) ? null : avail, wallets: wallets, grant_note: grantNote, err_grant: err1 && err1.message, err_bills: err2 && err2.message, err_balance: err3 && err3.message };
+          // 通知排版：副标题一行结论，正文一行一条，≤4 行防 iOS 折叠截断
+          const entryLine = names.length ? names.slice(0, 2).join(" · ") : (err1 && err2 ? (r.err_grant + "；" + r.err_bills) : "可能今日已领过或发放延迟");
+          const balLine = isNaN(avail) ? "" : "余额 " + avail + (wallets.length ? "（" + wallets.join("/") + "）" : "");
           if (sum > 0) {
-            r.title = "小浣熊签到成功"; r.subtitle = "今日 +" + sum + " · " + (isNaN(avail) ? "余额未知" : "余额 " + avail);
-            r.body = (names.join("；") + (balanceLine ? "；" + balanceLine : "")) + (grantNote ? "（" + grantNote + "）" : "");
+            r.title = "🦝 小浣熊签到成功";
+            r.subtitle = "今日 +" + sum + " 积分 · " + (isNaN(avail) ? "余额未知" : "余额 " + avail);
+            r.body = entryLine + (balLine ? "\n" + balLine : "") + (grantNote && grantNote !== "[]" ? "\n" + grantNote.slice(0, 60) : "");
           } else if (err1 && err2) {
-            r.title = "小浣熊签到失败"; r.subtitle = "发放与账单查询均失败"; r.body = r.err_grant + "；" + r.err_bills;
+            r.title = "🦝 小浣熊签到失败";
+            r.subtitle = "发放与账单查询均失败";
+            r.body = (r.err_grant + "\n" + r.err_bills).slice(0, 180);
           } else {
-            r.title = "小浣熊签到"; r.subtitle = "账单未见今日入账" + (isNaN(avail) ? "" : " · 余额 " + avail);
-            r.body = grantNote || (err2 ? "账单: " + r.err_bills : "可能今日已领过或发放延迟");
+            r.title = "🦝 小浣熊签到";
+            r.subtitle = "账单未见今日入账" + (isNaN(avail) ? "" : " · 余额 " + avail);
+            r.body = (grantNote && grantNote !== "[]" ? grantNote.slice(0, 80) : (err2 ? "账单: " + r.err_bills : "可能今日已领过或发放延迟"));
           }
+          r.notify_line = entryLine + (balLine ? "；" + balLine : "");
           cb(r);
         });
       });
@@ -382,7 +392,8 @@ function runCheckin(cb) {
 // cron / generic 手动运行：签到 + 系统通知（无 $request 环境）
 if (typeof $request === "undefined" || !$request || !$request.url) {
   runCheckin(function (r) {
-    $notification.post(r.title, r.subtitle, r.body || "");
+    if (NOTIFY_ON) $notification.post(r.title, r.subtitle, r.body || "");
+    console.log("[raccoon-checkin] " + r.title + " | " + r.subtitle);
     console.log("[raccoon-checkin] " + JSON.stringify(r));
     $done({});
   });
