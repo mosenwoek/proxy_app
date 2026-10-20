@@ -1,18 +1,18 @@
 #!name=增强预览插件脚本
-#!desc=让浏览器直接渲染 lpx / plugin / snippet 文件，不触发下载（不限域名，自定义域名同样生效）。感谢老中医提供的思路 @dcpeng
+#!desc=让浏览器直接渲染 lpx / plugin / snippet 文件，不触发下载（不限域名，自定义域名同样生效）
 #!author=mosen[https://github.com/mosenwoek],moyan[https://t.me/tgxiaoxizf_bot]
 #!homepage=https://github.com/mosenwoek/proxy_app
 #!icon=https://raw.githubusercontent.com/mosenwoek/icons/refs/heads/main/BoxJS.png
 #!tag=工具
 #!system=ios
 #!loon_version=3.5.1
-#!date=2026-10-18
+#!date=2026-10-20
 
 [Rewrite]
 # .snippet → snippet.txt（窄规则在前，同阶段按顺序执行，后者覆盖前者）
-response if ${url} ~= /\.snippet(\?.*)?$/i then response.header.set("Content-Disposition", "inline; filename=\"snippet.txt\"")
+#response if ${url} ~= /\.snippet(\?.*)?$/i then response.header.set("Content-Disposition", "inline; filename=\"snippet.txt\"")
 # .lpx / .plugin → plugin.txt
-response if ${url} ~= /\.(lpx|plugin)(\?.*)?$/i then response.header.set("Content-Disposition", "inline; filename=\"plugin.txt\"")
+response if ${url} ~= /\.(snippet|plugin|lpx)(\?.*)?$/i then response.header.set("Content-Disposition", "inline; filename=\"plugin.txt\"")
 
 # ─────────────────────────────────────────────────────────────
 #  MitM 说明（务必看）
