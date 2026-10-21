@@ -28,4 +28,4 @@ response if ${url} ~= /\.(snippet|plugin|lpx)(\?.*)?$/i then response.header.set
 #  5. 想覆盖任意域名可写 hostname = *（全部解密，耗电略增）。
 # ─────────────────────────────────────────────────────────────
 [MitM]
-hostname = raw.githubusercontent.com, gist.githubusercontent.com, yfamilys.com, kelee.one, ddgksf2013.top
+hostname = raw.githubusercontent.com, gist.githubusercontent.com, yfamilys.com, kelee.one, ddgksf2013.top, pages.dev
