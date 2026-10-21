@@ -2,7 +2,7 @@
 #!desc=让浏览器直接渲染 lpx / plugin / snippet 文件，不触发下载（不限域名，自定义域名同样生效）
 #!author=mosen[https://github.com/mosenwoek],moyan[https://t.me/tgxiaoxizf_bot]
 #!homepage=https://github.com/mosenwoek/proxy_app
-#!icon=https://raw.githubusercontent.com/mosenwoek/icons/refs/heads/main/BoxJS.png
+#!icon=https://raw.githubusercontent.com/mosenwoek/icons/refs/heads/main/yulanview.png
 #!tag=工具
 #!system=ios
 #!loon_version=3.5.1
