@@ -2,9 +2,9 @@
   "id": "mosen.pingme.wetalk",
   "name": "mosen & Boxjs脚本订阅",
   "author": "@Aswoth, @luckyday, BoxJS适配 @mosen",
-  "icon": "https://raw.githubusercontent.com/mosenwoek/icons/refs/heads/main/v2_square.png?v=1792312479",
+  "icon": "https://raw.githubusercontent.com/mosenwoek/icons/refs/heads/main/yulanview.png",
   "repo": "https://github.com/mosenwoek/proxy_app",
-  "updateTime": "2026-10-18 21:25:00",
+  "updateTime": "2026-10-21 22:25:00",
   "apps": [
     {
       "id": "mosen.pingme",
