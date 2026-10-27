@@ -33,17 +33,17 @@ kuwo_vip_unlock = switch,true,tag=解锁会员,desc=关闭后只去广告不解�
 [Rewrite]
 
 # ── 广告接口：mock 空 JSON ─────────────────────────────────
-^https?:\/\/mobilead\.kuwo\.cn\/EcomResourceServer\/get(IOSIsHideAd|Motor)\.do mock-response-body data-type=text data="{}" status-code=200
-^https?:\/\/rich\.kuwo\.cn\/(AdService|ecom)\/kaiping\/ad[iI]nfo mock-response-body data-type=text data="{}" status-code=200
-^https?:\/\/wapi\.kuwo\.cn\/openapi\/v\d+\/(?:user\/)?(?:(?:config|adVip|pop|freeMode(?:\/h5)?)(?:\/))?(?:info|text|homePage|message|give\/time)(?:[/?#]|$) mock-response-body data-type=text data="{}" status-code=200
-^https?:\/\/appi\.kuwo\.cn\/kuwopay\vip-tab\/setting mock-response-body data-type=text data="{}" status-code=200
+response if ${url} ~= /^https?:\/\/mobilead\.kuwo\.cn\/EcomResourceServer\/get(IOSIsHideAd|Motor)\.do/i then response.body.mock("text", "{}", 200)
+response if ${url} ~= /^https?:\/\/rich\.kuwo\.cn\/(AdService|ecom)\/kaiping\/ad[iI]nfo/i then response.body.mock("text", "{}", 200)
+response if ${url} ~= /^https?:\/\/wapi\.kuwo\.cn\/openapi\/v\d+\/(?:user\/)?(?:(?:config|adVip|pop|freeMode(?:\/h5)?)(?:\/))?(?:info|text|homePage|message|give\/time)(?:[\/?#]|$)/i then response.body.mock("text", "{}", 200)
+response if ${url} ~= /^https?:\/\/appi\.kuwo\.cn\/kuwopay\vip-tab\/setting/i then response.body.mock("text", "{}", 200)
 
 [Script]
 
 # ── 会员 / 音质 / 播放：一条规则覆盖全部接口 ─────────────────
 # pattern 与原版 sgmodule 完全一致（ScriptHub 转换后也是这条）
 # requires-body=true —— 脚本要读响应体
-http-response ^https?:\/\/(?:vip1\.kuwo\.cn\/(?:vip\/enc\/user\/vip|vip\/v2\/user\/vip|(?:commercia\/)?vip\/(?:v2\/theme\?op=gd|player\/getStyleListByModel|hanger\/wear)|commercia\/vip\/dressCenter\/getTabList|commercia\/vipTab\/myTab\/base)|.+\.kuwo\.cn\/mobi\.s\?f=(?:kuwo|kwxs)\&q=|music(?:pay)?\.kuwo\.cn\/music\.pay\?newver=3|wapi\.kuwo\.cn\/openapi\/v1\/user\/freeMode\/give\/time|tingshu\.kuwo\.cn\/(?:api\/v2\/pay\/app\/getConfigInfo|v2\/api\/pay\/payInfo\/kwplayer\/payMiniBar)|audiobookpay\.kuwo\.cn\/a\.p|homepages\.kuwo\.cn(?:\.eo\.dnse1\.com)?\/mgxh\.s) script-path=https://raw.githubusercontent.com/mosenwoek/proxy_app/refs/heads/main/All-Task.js/kuwo-agree.js, requires-body=true, timeout=60, tag=酷我音乐
+response if ${url} ~= /^https?:\/\/(?:vip1\.kuwo\.cn\/(?:vip\/enc\/user\/vip|vip\/v2\/user\/vip|(?:commercia\/)?vip\/(?:v2\/theme\?op=gd|player\/getStyleListByModel|hanger\/wear)|commercia\/vip\/dressCenter\/getTabList|commercia\/vipTab\/myTab\/base)|.+\.kuwo\.cn\/mobi\.s\?f=(?:kuwo|kwxs)\&q=|music(?:pay)?\.kuwo\.cn\/music\.pay\?newver=3|wapi\.kuwo\.cn\/openapi\/v1\/user\/freeMode\/give\/time|tingshu\.kuwo\.cn\/(?:api\/v2\/pay\/app\/getConfigInfo|v2\/api\/pay\/payInfo\/kwplayer\/payMiniBar)|audiobookpay\.kuwo\.cn\/a\.p|homepages\.kuwo\.cn(?:\.eo\.dnse1\.com)?\/mgxh\.s)/i then script("https://raw.githubusercontent.com/mosenwoek/proxy_app/refs/heads/main/All-Task.js/kuwo-agree.js", {${kuwo_agree}, ${kuwo_debug}, ${kuwo_vip_unlock}}) with tag="酷我音乐", timeout=60, requires_body=true
 
 [MITM]
 hostname = %APPEND% *.kuwo.cn
