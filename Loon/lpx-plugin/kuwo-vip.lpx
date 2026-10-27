@@ -1,0 +1,48 @@
+#!name=酷我音乐 VIP
+#!desc=去除全局广告、解锁会员权限、支持切换音质（最高无损）。首次使用需在 BoxJS「酷我音乐」里填写「我同意」。
+#!author=𝐎𝐍𝐙𝟑𝐕[https://github.com/Yuheng0101/X],mosen[https://github.com/mosenwoek],moyan[https://t.me/tgxiaoxizf_bot]
+#!homepage=https://t.me/onz3v_channel
+#!icon=https://raw.githubusercontent.com/mosenwoek/icons/refs/heads/main/kuwo.png
+#!tag=音乐,工具
+#!loon_version=3.5.1(983)
+#!date=2026-10-28
+#!type=normal
+
+# ─────────────────────────────────────────────────────────────
+#  【使用前必做】
+#  在 BoxJS → 酷我音乐 → 「使用声明」填「我同意」，否则脚本不会工作。
+#
+#  【脚本原理】
+#  1) 广告接口直接用 Rewrite 拦掉（返回空 JSON），不消耗脚本
+#  2) 会员/音质接口用 response 脚本改写响应体
+#  3) 脚本需要读响应体，所以必须 requires_body=true
+#
+#  【MitM 说明】
+#  *.kuwo.cn 必须解密才能读 URL 参数和改响应体
+# ─────────────────────────────────────────────────────────────
+
+[Argument]
+kuwo_agree = input,"",type=string,tag=使用声明,desc=填「我同意」三个字即可。也可以在 BoxJS 里填
+kuwo_debug = switch,false,tag=调试日志,desc=打开后脚本会打印命中的路由和请求信息
+kuwo_ad_block = switch,true,tag=拦截广告,desc=关闭后不拦截酷我广告接口
+kuwo_vip_unlock = switch,true,tag=解锁会员,desc=关闭后只去广告不解锁会员
+
+[Rewrite]
+
+# ── 广告接口：直接返回空 JSON ────────────────────────────────
+request if ${url} ~= /^https?:\/\/mobilead\.kuwo\.cn\/EcomResourceServer\/get(IOSIsHideAd|Motor)\.do/ then reject_dict(200)
+request if ${url} ~= /^https?:\/\/rich\.kuwo\.cn\/(AdService|ecom)\/kaiping\/ad[iI]nfo/ then reject_dict(200)
+request if ${url} ~= /^https?:\/\/wapi\.kuwo\.cn\/openapi\/v\d+\/(?:user\/)?(?:(?:config|adVip|pop|freeMode(?:\/h5)?)(?:\/))?(?:info|text|homePage|message|give\/time)(?:[/?#]|$)/ then reject_dict(200)
+request if ${url} ~= /^https?:\/\/appi\.kuwo\.cn\/kuwopay\/vip-tab\/setting/ then reject_dict(200)
+
+# ── 会员 / 音质：交由脚本改写响应体 ────────────────────────
+response if ${url} ~= /^https?:\/\/vip1\.kuwo\.cn\/(?:vip\/enc\/user\/vip|vip\/v2\/user\/vip|(?:commercia\/)?vip\/(?:v2\/theme\?op=gd|player\/getStyleListByModel|hanger\/wear)|commercia\/vip\/dressCenter\/getTabList|commercia\/vipTab\/myTab\/base)/ then script("https://raw.githubusercontent.com/mosenwoek/proxy_app/refs/heads/main/All-Task.js/kuwo-agree.js", {${kuwo_debug}, ${kuwo_vip_unlock}}) with requires_body=true, timeout=60, tag="酷我·会员"
+response if ${url} ~= /^https?:\/\/.+\.kuwo\.cn\/mobi\.s\?f=(?:kuwo|kwxs)\&q=/ then script("https://raw.githubusercontent.com/mosenwoek/proxy_app/refs/heads/main/All-Task.js/kuwo-agree.js", {${kuwo_debug}, ${kuwo_vip_unlock}}) with requires_body=true, timeout=60, tag="酷我·配置"
+response if ${url} ~= /^https?:\/\/music(?:pay)?\.kuwo\.cn\/music\.pay\?newver=3/ then script("https://raw.githubusercontent.com/mosenwoek/proxy_app/refs/heads/main/All-Task.js/kuwo-agree.js", {${kuwo_debug}, ${kuwo_vip_unlock}}) with requires_body=true, timeout=60, tag="酷我·播放"
+response if ${url} ~= /^https?:\/\/wapi\.kuwo\.cn\/openapi\/v1\/user\/freeMode\/give\/time/ then script("https://raw.githubusercontent.com/mosenwoek/proxy_app/refs/heads/main/All-Task.js/kuwo-agree.js", {${kuwo_debug}, ${kuwo_vip_unlock}}) with requires_body=true, timeout=60, tag="酷我·免费"
+response if ${url} ~= /^https?:\/\/tingshu\.kuwo\.cn\/(?:api\/v2\/pay\/app\/getConfigInfo|v2\/api\/pay\/payInfo\/kwplayer\/payMiniBar)/ then script("https://raw.githubusercontent.com/mosenwoek/proxy_app/refs/heads/main/All-Task.js/kuwo-agree.js", {${kuwo_debug}, ${kuwo_vip_unlock}}) with requires_body=true, timeout=60, tag="酷我·听书"
+response if ${url} ~= /^https?:\/\/audiobookpay\.kuwo\.cn\/a\.p/ then script("https://raw.githubusercontent.com/mosenwoek/proxy_app/refs/heads/main/All-Task.js/kuwo-agree.js", {${kuwo_debug}, ${kuwo_vip_unlock}}) with requires_body=true, timeout=60, tag="酷我·有声书"
+response if ${url} ~= /^https?:\/\/homepages\.kuwo\.cn(?:\.eo\.dnse1\.com)?\/mgxh\.s/ then script("https://raw.githubusercontent.com/mosenwoek/proxy_app/refs/heads/main/All-Task.js/kuwo-agree.js", {${kuwo_debug}, ${kuwo_vip_unlock}}) with requires_body=true, timeout=60, tag="酷我·首页"
+
+[Mitm]
+hostname = %APPEND% *.kuwo.cn
