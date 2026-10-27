@@ -1,0 +1,60 @@
+{
+  "id": "mosen.kuwo",
+  "name": "酷我音乐",
+  "keys": [
+    "KUWO_AGREE",
+    "KUWO_DEBUG",
+    "KUWO_VIP_UNLOCK"
+  ],
+  "settings": [
+    {
+      "id": "KUWO_AGREE",
+      "name": "使用声明",
+      "val": "",
+      "type": "text",
+      "placeholder": "我同意",
+      "desc": "填「我同意」三个字方可使用。本脚本仅修改客户端本地响应数据，不提供任何破解或盗版内容；禁止商用与二次分发，使用者自行承担一切后果"
+    },
+    {
+      "id": "KUWO_DEBUG",
+      "name": "调试日志",
+      "val": "false",
+      "type": "selects",
+      "items": [
+        {
+          "key": "false",
+          "label": "关闭"
+        },
+        {
+          "key": "true",
+          "label": "开启"
+        }
+      ],
+      "desc": "开启后打印命中的路由、请求 URL 等诊断信息，不打印响应体内容"
+    },
+    {
+      "id": "KUWO_VIP_UNLOCK",
+      "name": "解锁会员",
+      "val": "true",
+      "type": "selects",
+      "items": [
+        {
+          "key": "true",
+          "label": "开启"
+        },
+        {
+          "key": "false",
+          "label": "仅去广告"
+        }
+      ],
+      "desc": "关闭后只拦截广告接口，不改写会员与音质相关响应"
+    }
+  ],
+  "author": "𝐎𝐍𝐙𝟑𝐕[https://github.com/Yuheng0101/X],mosen[https://github.com/mosenwoek],moyan[https://t.me/tgxiaoxizf_bot]",
+  "repo": "https://github.com/mosenwoek/proxy_app",
+  "script": "https://raw.githubusercontent.com/mosenwoek/proxy_app/refs/heads/main/All-Task.js/kuwo-agree.js",
+  "icons": [
+    "https://raw.githubusercontent.com/mosenwoek/icons/refs/heads/main/kuwo.png",
+    "https://raw.githubusercontent.com/mosenwoek/icons/refs/heads/main/kuwo.png"
+  ]
+}
